@@ -652,7 +652,7 @@ export default class PopupNewMedia extends PopupElement {
     const target = e.target as HTMLElement;
     const {input} = this.messageInputField;
     if(target !== input) {
-      if(target.tagName === 'INPUT' || target.isContentEditable) {
+      if(target.tagName === 'INPUT' || target.isContentEditable || target.classList.contains('a-image-editor__textarea')) {
         return;
       }
 

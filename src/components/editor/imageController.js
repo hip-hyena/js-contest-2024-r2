@@ -9,7 +9,7 @@ export default class ImageController extends EventTarget {
     this.maskCanvas = document.createElement('canvas');
     this.blurCanvas = document.createElement('canvas');
     this.textareaEl = document.createElement('textarea');
-    this.textareaEl.classList.add('is-hidden');
+    this.textareaEl.classList.add('a-image-editor__textarea', 'is-hidden');
     this.textareaEl.cols = 1;
     this.ctx = this.canvasEl.getContext('2d');
     this.maskCtx = this.maskCanvas.getContext('2d');
@@ -246,7 +246,7 @@ export default class ImageController extends EventTarget {
     this.textareaEl.classList.toggle('is-hidden', !textOverlay || !!this.drag);
     if (textOverlay && !this.drag) {
       const center = this.imageToClient(...textOverlay.center);
-      this.textareaEl.className = `is-${textOverlay.align}-aligned`;
+      this.textareaEl.className = `a-image-editor__textarea is-${textOverlay.align}-aligned`;
       this.textareaEl.style.left = center[0] + 'px';
       this.textareaEl.style.top = center[1] + 'px';
       this.textareaEl.style.transform = `translate(-50%, -50%) rotate(${textOverlay.angle * 180 / Math.PI}deg)`;
@@ -657,19 +657,21 @@ export default class ImageController extends EventTarget {
     initContext(ctx);
     
     // Snapping guidelines
-    ctx.strokeStyle = '#4fc1ff';
-    ctx.lineWidth = 1;
-    if (this.snappedX !== false) {
-      ctx.beginPath();
-      ctx.moveTo(this.snappedX, 0);
-      ctx.lineTo(this.snappedX, this.imageHeight);
-      ctx.stroke();
-    }
-    if (this.snappedY !== false) {
-      ctx.beginPath();
-      ctx.moveTo(0, this.snappedY);
-      ctx.lineTo(this.imageWidth, this.snappedY);
-      ctx.stroke();
+    if (!cropped) {
+      ctx.strokeStyle = '#4fc1ff';
+      ctx.lineWidth = 1;
+      if (this.snappedX !== false) {
+        ctx.beginPath();
+        ctx.moveTo(this.snappedX, 0);
+        ctx.lineTo(this.snappedX, this.imageHeight);
+        ctx.stroke();
+      }
+      if (this.snappedY !== false) {
+        ctx.beginPath();
+        ctx.moveTo(0, this.snappedY);
+        ctx.lineTo(this.imageWidth, this.snappedY);
+        ctx.stroke();
+      }
     }
 
     for (const overlay of this.overlays) {
@@ -890,7 +892,8 @@ export default class ImageController extends EventTarget {
       }
       ctx.restore();
 
-      if (overlay == this.textOverlay || overlay == this.stickerOverlay) {
+      // Draw control handles
+      if (!cropped && (overlay == this.textOverlay || overlay == this.stickerOverlay)) {
         ctx.save();
         ctx.translate(overlay.center[0], overlay.center[1]);
         ctx.rotate(overlay.angle);
