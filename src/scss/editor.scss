@@ -5,6 +5,7 @@
   left: 0;
   right: 0;
   bottom: 0;
+  z-index: 10;
   background: #000;
   color: #fff;
 }
@@ -565,6 +566,40 @@ input[type=range].a-color-picker__hue::-ms-thumb {
 }
 .a-angle-slider__dots .is-zero {
   opacity: 1;
+}
+
+
+.a-media-attach-buttons {
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-end;
+  align-items: flex-start;
+  padding: 0px 4px;
+  gap: 4px;
+
+  position: absolute;
+  width: fit-content;
+  left: 0;
+  right: 0;
+  margin: auto;
+  bottom: 6px;
+  z-index: 2;
+
+  background: rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(17.5px);
+  border-radius: 16px;
+
+  opacity: 0;
+  transform: translateY(10px);
+  transition: 0.3s opacity, 0.3s transform;
+}
+.popup-item-media:hover .a-media-attach-buttons {
+  opacity: 1;
+  transform: none;
+}
+.a-media-attach-buttons .a-button {
+  width: 32px;
+  height: 32px;
 }
 
 @font-face {

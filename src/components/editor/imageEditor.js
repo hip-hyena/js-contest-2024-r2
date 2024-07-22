@@ -8,12 +8,19 @@ import { makeEl } from './utils.js';
 import AngleSlider from './comps/angleSlider.js';
 import ImageController from './imageController.js';
 
-export default class ImageEditor {
+export default class ImageEditor extends EventTarget {
   constructor({ parent, image }) {
+    super();
     this.el = makeEl('div', 'a-image-editor', { parent });
     this.mainEl = makeEl('div', 'a-image-editor__main', { parent: this.el });
     this.sideEl = makeEl('div', 'a-image-editor__side', { parent: this.el });
     this.confirmBtn = Button({ parent: this.el, classList: ['is-fab'], icon: 'check' });
+    this.confirmBtn.addEventListener('click', () => {
+      this.dismiss();
+      const ev = new Event('confirm');
+      ev.image = this.controller.renderFinalImage();
+      this.dispatchEvent(ev);
+    });
 
     this.imageEl = makeEl('div', 'a-image-editor__image', { parent: this.mainEl });
     this.cropPanelEl = makeEl('div', ['a-image-editor__crop-panel', 'is-hidden'], { parent: this.mainEl });
@@ -38,6 +45,10 @@ export default class ImageEditor {
     });
 
     this.closeBtn = Button({ parent: this.sideHeadEl, icon: 'close' });
+    this.closeBtn.addEventListener('click', () => {
+      this.dismiss();
+      this.dispatchEvent(new Event('cancel'));
+    });
     this.sideTitleEl = makeEl('div', 'a-image-editor__side-title', { parent: this.sideHeadEl, text: 'Edit' });
     this.undoBtn = Button({ parent: this.sideHeadEl, icon: 'undo', classList: ['is-disabled'] });
     this.undoBtn.addEventListener('click', () => {
@@ -68,6 +79,10 @@ export default class ImageEditor {
     });
 
     image && this.controller.loadImage(image);
+  }
+
+  dismiss() { // TODO: animate & remove listeners
+    this.el.remove();
   }
 
   selectTab(newIndex) {

@@ -570,28 +570,30 @@ export default class ImageController extends EventTarget {
     this.redraw();
   }
 
-  redraw() {
-    if (!this.image) {
+  redraw(targetCtx, cropped) {
+    if (!this.image || !this.adjuster) {
       return;
     }
-    const ctx = this.ctx;
+    const ctx = targetCtx || this.ctx;
     const dp = window.devicePixelRatio;
-    const cropWidth = this.imageWidth - (this.mode != 'crop' ? this.state.crop[0] + this.state.crop[2] : 0);
-    const cropHeight = this.imageHeight - (this.mode != 'crop' ?  this.state.crop[1] + this.state.crop[3] : 0) ;
-    let viewScale = Math.min(
+    const cropWidth = this.imageWidth - (this.mode != 'crop' || cropped ? this.state.crop[0] + this.state.crop[2] : 0);
+    const cropHeight = this.imageHeight - (this.mode != 'crop' || cropped ?  this.state.crop[1] + this.state.crop[3] : 0) ;
+    let viewScale = cropped ? 1 : Math.min(
       this.viewWidth / cropWidth,
       this.viewHeight / cropHeight
     );
+    let viewCenter = cropped ? [cropWidth / 2, cropHeight / 2] : [this.viewWidth / 2, this.viewHeight / 2];
     const padViewScale = Math.min((this.viewWidth - 120 * dp) / this.imageWidth, (this.viewHeight - 180 * dp) / this.imageHeight);
-    let viewCenter = [this.viewWidth / 2, this.viewHeight / 2];
     const padViewCenter = [viewCenter[0], viewCenter[1] - 30 * dp];
 
     // Animate
-    viewScale = viewScale * (1 - this._cropAnim) + padViewScale * this._cropAnim;
-    viewCenter = [
-      viewCenter[0] * (1 - this._cropAnim) + padViewCenter[0] * this._cropAnim,
-      viewCenter[1] * (1 - this._cropAnim) + padViewCenter[1] * this._cropAnim
-    ];
+    if (!cropped) {
+      viewScale = viewScale * (1 - this._cropAnim) + padViewScale * this._cropAnim;
+      viewCenter = [
+        viewCenter[0] * (1 - this._cropAnim) + padViewCenter[0] * this._cropAnim,
+        viewCenter[1] * (1 - this._cropAnim) + padViewCenter[1] * this._cropAnim
+      ];
+    }
 
     const initContext = (ctx) => {
       //ctx.clearRect(0, 0, this.viewWidth, this.viewHeight);
@@ -599,7 +601,7 @@ export default class ImageController extends EventTarget {
       ctx.translate(viewCenter[0], viewCenter[1]);
       ctx.scale(viewScale, viewScale);
 
-      if (this.mode != 'crop') {
+      if (this.mode != 'crop' && !cropped) {
         ctx.beginPath();
         ctx.rect(- cropWidth / 2, - cropHeight / 2,
           this.imageWidth - this.state.crop[0] - this.state.crop[2],
@@ -611,8 +613,8 @@ export default class ImageController extends EventTarget {
 
       ctx.save();
       ctx.translate(
-        - cropWidth / 2 - (this.mode != 'crop' ? this.state.crop[0] : 0),
-        - cropHeight / 2 - (this.mode != 'crop' ? this.state.crop[1] : 0)
+        - cropWidth / 2 - (this.mode != 'crop' || cropped ? this.state.crop[0] : 0),
+        - cropHeight / 2 - (this.mode != 'crop' || cropped ? this.state.crop[1] : 0)
       );
     }
     const drawBackground = (ctx, op = 'destination-atop') => {
@@ -625,8 +627,8 @@ export default class ImageController extends EventTarget {
         //ctx.translate(-cropWidth / 2, -cropWidth/2);
       }
       ctx.translate(
-        - cropWidth / 2 - (this.mode != 'crop' ? (this.state.flip ? this.state.crop[2] : this.state.crop[0]) : 0),
-        - cropHeight / 2 - (this.mode != 'crop' ? this.state.crop[1] : 0)
+        - cropWidth / 2 - (this.mode != 'crop' || cropped ? (this.state.flip ? this.state.crop[2] : this.state.crop[0]) : 0),
+        - cropHeight / 2 - (this.mode != 'crop' || cropped ? this.state.crop[1] : 0)
       );
       ctx.globalCompositeOperation = op;
       ctx.drawImage(this.adjuster.canvas, 0, 0);
@@ -808,7 +810,7 @@ export default class ImageController extends EventTarget {
           ctx.stroke();
         }
       } else {
-        let ctx = this.ctx;
+        let ctx = targetCtx || this.ctx;
         if (overlay.type == 'blur') {
           ctx = this.blurCtx;
           ctx.reset();
@@ -879,10 +881,11 @@ export default class ImageController extends EventTarget {
           //ctx.filter = 'blur(50px)';
 
           // Render blurred image back to the main canvas
-          this.ctx.save();
-          this.ctx.resetTransform();
-          this.ctx.drawImage(this.blurCanvas, 0, 0);
-          this.ctx.restore();
+          const trgCtx = targetCtx || this.ctx;
+          trgCtx.save();
+          trgCtx.resetTransform();
+          trgCtx.drawImage(this.blurCanvas, 0, 0);
+          trgCtx.restore();
         }
       }
       ctx.restore();
@@ -925,7 +928,7 @@ export default class ImageController extends EventTarget {
     ctx.restore();
     drawBackground(ctx);
     ctx.restore();
-    if (this.mode == 'crop') {
+    if (this.mode == 'crop' && !cropped) {
       ctx.save();
       
       ctx.translate(viewCenter[0], viewCenter[1]);
@@ -965,6 +968,21 @@ export default class ImageController extends EventTarget {
       ctx.arc(x0 + w, y0 + h, 4, 0, 2 * Math.PI, false);
       ctx.fill();
       ctx.restore();
+    }
+  }
+
+  renderFinalImage() {
+    const canvas = document.createElement('canvas');
+    canvas.width = this.imageWidth - this.state.crop[0] - this.state.crop[2];
+    canvas.height = this.imageHeight - this.state.crop[1] - this.state.crop[3];
+    const ctx = canvas.getContext('2d');
+    this.redraw(ctx, true);
+    return {
+      url: canvas.toDataURL('image/jpeg', 1),
+      size: {
+        width: canvas.width,
+        height: canvas.height,
+      }
     }
   }
 

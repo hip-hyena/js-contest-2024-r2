@@ -56,6 +56,8 @@ import {Accessor, createRoot, createSignal, Setter} from 'solid-js';
 import SelectedEffect from '../chat/selectedEffect';
 import PopupMakePaid from './makePaid';
 import paymentsWrapCurrencyAmount from '../../helpers/paymentsWrapCurrencyAmount';
+import Button from '../editor/comps/button';
+import ImageEditor from '../editor/imageEditor';
 
 type SendFileParams = SendFileDetails & {
   file?: File,
@@ -63,8 +65,12 @@ type SendFileParams = SendFileDetails & {
   noSound?: boolean,
   itemDiv: HTMLElement,
   mediaSpoiler?: HTMLElement,
-  middlewareHelper: MiddlewareHelper
+  middlewareHelper: MiddlewareHelper,
   // strippedBytes?: PhotoSize.photoStrippedSize['bytes']
+
+  original?: string,
+  spoilerBtnOn?: HTMLElement,
+  spoilerBtnOff?: HTMLElement,
 };
 
 let currentPopup: PopupNewMedia;
@@ -495,6 +501,9 @@ export default class PopupNewMedia extends PopupElement {
     item.mediaSpoiler = mediaSpoiler;
     item.itemDiv.append(mediaSpoiler);
 
+    item.spoilerBtnOn && item.spoilerBtnOn.classList.toggle('is-hidden', true);
+    item.spoilerBtnOff && item.spoilerBtnOff.classList.toggle('is-hidden', false);
+
     await doubleRaf();
     if(!middleware()) {
       return;
@@ -514,6 +523,9 @@ export default class PopupNewMedia extends PopupElement {
     });
 
     item.mediaSpoiler = undefined;
+
+    item.spoilerBtnOn && item.spoilerBtnOn.classList.toggle('is-hidden', false);
+    item.spoilerBtnOff && item.spoilerBtnOff.classList.toggle('is-hidden', true);
   }
 
   public appendDrops(element: HTMLElement) {
@@ -821,6 +833,8 @@ export default class PopupNewMedia extends PopupElement {
     const file = params.file;
     const isVideo = file.type.startsWith('video/');
 
+    let img: any;
+    let url: any;
     if(isVideo) {
       const video = createVideo({middleware: params.middlewareHelper.get()});
       video.src = params.objectURL = await apiManagerProxy.invoke('createObjectURL', file);
@@ -861,9 +875,9 @@ export default class PopupNewMedia extends PopupElement {
         ...thumb
       };
     } else {
-      const img = new Image();
+      img = new Image();
       itemDiv.append(img);
-      const url = params.objectURL = await apiManagerProxy.invoke('createObjectURL', file);
+      url = params.objectURL = await apiManagerProxy.invoke('createObjectURL', file);
 
       await renderImageFromUrlPromise(img, url);
       const mimeType = params.file.type as MTMimeType;
@@ -893,6 +907,52 @@ export default class PopupNewMedia extends PopupElement {
         ]).then(() => {});
       }
     }
+
+    const buttonsEl = document.createElement('div');
+    buttonsEl.className = 'a-media-attach-buttons';
+    if (!isVideo) {
+      const editBtn = Button({ parent: buttonsEl, icon: 'sliders' } as any);
+      editBtn.addEventListener('click', async () => {
+        if (!params.original) {
+          params.original = url;
+        }
+        const image = new Image();
+        image.onload = () => {
+          const editor = new ImageEditor({
+            parent: document.body,
+            image,
+          });
+          editor.addEventListener('confirm', (ev: any) => {
+            params.objectURL = ev.image.url;
+            params.scaledBlob = null;
+            params.width = ev.image.size.width;
+            params.height = ev.image.size.height;
+            renderImageFromUrlPromise(img, ev.image.url);
+          });
+        }
+        image.src = params.original;
+      });
+    }
+    const spoilerBtnOn = Button({ parent: buttonsEl, icon: 'spoiler' } as any);
+    spoilerBtnOn.addEventListener('click', () => {
+      this.applyMediaSpoiler(params);
+    });
+    const spoilerBtnOff = Button({ parent: buttonsEl, icon: 'spoileroff', classList: ['is-hidden'] } as any);
+    spoilerBtnOff.addEventListener('click', () => {
+      this.removeMediaSpoiler(params);
+    });
+    const binBtn = Button({ parent: buttonsEl, icon: 'bin' } as any);
+    binBtn.addEventListener('click', () => {
+      this.files = this.files.filter(file => params.file !== file);
+      if (this.files.length) {
+        this.attachFiles();
+      } else {
+        this.hide();
+      }
+    });
+    itemDiv.append(buttonsEl);
+    params.spoilerBtnOn = spoilerBtnOn;
+    params.spoilerBtnOff = spoilerBtnOff;
   }
 
   private async attachDocument(params: SendFileParams): ReturnType<PopupNewMedia['attachMedia']> {
@@ -998,7 +1058,7 @@ export default class PopupNewMedia extends PopupElement {
     } as any;
 
     // do not pass these properties to worker
-    defineNotNumerableProperties(params, ['scaledBlob', 'middlewareHelper', 'itemDiv', 'mediaSpoiler']);
+    defineNotNumerableProperties(params, ['scaledBlob', 'middlewareHelper', 'itemDiv', 'mediaSpoiler', 'original', 'spoilerBtnOn', 'spoilerBtnOff']);
 
     params.middlewareHelper = this.middlewareHelper.get().create();
     params.itemDiv = itemDiv;
