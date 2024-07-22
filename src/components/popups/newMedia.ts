@@ -921,6 +921,7 @@ export default class PopupNewMedia extends PopupElement {
           const editor = new ImageEditor({
             parent: document.body,
             image,
+            managers: this.managers
           });
           editor.addEventListener('confirm', (ev: any) => {
             params.objectURL = ev.image.url;

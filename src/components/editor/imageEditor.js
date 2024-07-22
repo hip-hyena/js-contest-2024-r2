@@ -9,7 +9,7 @@ import AngleSlider from './comps/angleSlider.js';
 import ImageController from './imageController.js';
 
 export default class ImageEditor extends EventTarget {
-  constructor({ parent, image }) {
+  constructor({ parent, image, managers }) {
     super();
     this.el = makeEl('div', 'a-image-editor', { parent });
     this.mainEl = makeEl('div', 'a-image-editor__main', { parent: this.el });
@@ -29,7 +29,7 @@ export default class ImageEditor extends EventTarget {
     this.sideTabsEl = makeEl('div', ['a-image-editor__side-tabs', 'a-tabs'], { parent: this.sideEl });
     this.sideTabBodyEl = makeEl('div', 'a-image-editor__side-tab-body', { parent: this.sideEl });
     
-    this.controller = new ImageController({ el: this.imageEl });
+    this.controller = new ImageController({ el: this.imageEl, managers });
 
     this.rotateBtn = Button({ parent: this.cropPanelEl, icon: 'rotate' });
     this.rotateBtn.addEventListener('click', () => {
@@ -68,9 +68,10 @@ export default class ImageEditor extends EventTarget {
       new CropTab({ parent: this.sideTabBodyEl, controller: this.controller }),
       new TextTab({ parent: this.sideTabBodyEl, controller: this.controller }),
       new DrawTab({ parent: this.sideTabBodyEl, controller: this.controller }),
-      new StickersTab({ parent: this.sideTabBodyEl, controller: this.controller }),
+      new StickersTab({ parent: this.sideTabBodyEl, controller: this.controller, managers }),
     ];
     this.sideTabsEl.append(...this.tabs.map(tab => tab.tabEl));
+    this.selectedTab = null;
     this.selectTab(0);
     this.tabs.forEach((tab, index) => {
       tab.tabEl.addEventListener('click', () => {
@@ -86,8 +87,14 @@ export default class ImageEditor extends EventTarget {
   }
 
   selectTab(newIndex) {
+    if (this.selectedTab === newIndex) {
+      return;
+    }
+    if (this.selectedTab !== null) {
+      this.tabs[this.selectedTab].closed();
+    }
     this.selectedTab = newIndex;
-    this.controller.setMode(['adjust', 'crop', 'text', 'draw', 'stickers'][newIndex]);
+    this.controller.setMode(['adjust', 'crop', 'text', 'draw', 'sticker'][newIndex]);
     const parentRect = this.sideTabsEl.getBoundingClientRect();
     const rect = this.tabs[newIndex].tabEl.getBoundingClientRect();
     this.sideTabsEl.style.setProperty('--highlight-left', rect.left - parentRect.left + 12);
@@ -96,5 +103,6 @@ export default class ImageEditor extends EventTarget {
       tab.tabEl.classList.toggle('is-active', index == newIndex);
     });
     this.cropPanelEl.classList.toggle('is-hidden', newIndex != 1);
+    this.tabs[this.selectedTab].opened();
   }
 }

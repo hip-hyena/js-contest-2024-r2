@@ -568,6 +568,18 @@ input[type=range].a-color-picker__hue::-ms-thumb {
   opacity: 1;
 }
 
+.a-tab.is-stickers {
+  height: 100%;
+  overflow-y: hidden;
+}
+.a-tab.is-stickers .emoticons-container {
+  width: 100%;
+  display: flex;
+}
+.a-tab.is-stickers .no-border-top .menu-wrapper {
+  border-bottom-color: transparent;
+}
+
 
 .a-media-attach-buttons {
   display: flex;

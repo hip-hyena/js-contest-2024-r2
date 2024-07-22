@@ -1,10 +1,22 @@
 import ImageAdjuster from './imageAdjuster.js';
 import { distance, fitCubicBezier, getContrastColor, hexToRgb, interpolatePoint, rgbToHex, simplify } from './utils.js';
+import wrapSticker from '../wrappers/sticker.ts';
+import createMiddleware from '../../helpers/solid/createMiddleware.ts';
 
+function waitForImage(img) {
+  return new Promise((resolve) => {
+    if (img.tagName == 'IMG') {
+      img.onload = resolve;
+    } else {
+      resolve();
+    }
+  });
+}
 export default class ImageController extends EventTarget {
-  constructor({ el }) {
+  constructor({ el, managers }) {
     super();
     this.el = el;
+    this.managers = managers;
     this.canvasEl = document.createElement('canvas');
     this.maskCanvas = document.createElement('canvas');
     this.blurCanvas = document.createElement('canvas');
@@ -92,10 +104,10 @@ export default class ImageController extends EventTarget {
     this._cropAnim = 0;
 
     let debounceTimer;
-    this.commitDebounced = () => {
+    this.commitDebounced = (arg) => {
       window.clearTimeout(debounceTimer);
       debounceTimer = window.setTimeout(() => {
-        this.commit();
+        this.commit(arg);
       }, 1000);
     };
   }
@@ -156,8 +168,9 @@ export default class ImageController extends EventTarget {
   setTextStyle(newStyle) {
     this.textStyle = newStyle;
     if (this.textOverlay) {
+      const old = JSON.stringify(this.textOverlay);
       this.textOverlay.style = newStyle;
-      this.commit();
+      this.commit([2, JSON.stringify(this.textOverlay), this.overlays.indexOf(this.textOverlay), old]);
     }
     this.updateTextarea();
     this.redraw();
@@ -165,8 +178,9 @@ export default class ImageController extends EventTarget {
   setTextColor(newColor) {
     this.textColor = newColor;
     if (this.textOverlay) {
+      const old = JSON.stringify(this.textOverlay);
       this.textOverlay.color = newColor;
-      this.commit();
+      this.commit([2, JSON.stringify(this.textOverlay), this.overlays.indexOf(this.textOverlay), old]);
     }
     this.updateTextarea();
     this.redraw();
@@ -174,8 +188,9 @@ export default class ImageController extends EventTarget {
   setTextFont(newFont) {
     this.textFont = newFont;
     if (this.textOverlay) {
+      const old = JSON.stringify(this.textOverlay);
       this.textOverlay.font = newFont;
-      this.commit();
+      this.commit([2, JSON.stringify(this.textOverlay), this.overlays.indexOf(this.textOverlay), old]);
     }
     this.updateTextarea();
     this.redraw();
@@ -183,8 +198,9 @@ export default class ImageController extends EventTarget {
   setTextSize(newSize) {
     this.textSize = newSize;
     if (this.textOverlay) {
+      const old = JSON.stringify(this.textOverlay);
       this.textOverlay.size = newSize;
-      this.commitDebounced();
+      this.commitDebounced([2, JSON.stringify(this.textOverlay), this.overlays.indexOf(this.textOverlay), old]);
     }
     this.updateTextarea();
     this.redraw();
@@ -192,8 +208,9 @@ export default class ImageController extends EventTarget {
   setTextAlign(newAlign) {
     this.textAlign = newAlign;
     if (this.textOverlay) {
+      const old = JSON.stringify(this.textOverlay);
       this.textOverlay.align = newAlign;
-      this.commit();
+      this.commit([2, JSON.stringify(this.textOverlay), this.overlays.indexOf(this.textOverlay), old]);
     }
     this.updateTextarea();
     this.redraw();
@@ -204,7 +221,50 @@ export default class ImageController extends EventTarget {
     }
   }
 
+  async loadSticker(docId) {
+    const div = document.createElement('div');
+    const loadPromises = [];
+    wrapSticker({
+      doc: await this.managers.appDocsManager.getDoc(docId),
+      div,
+      middleware: createMiddleware().get(),
+      loadPromises,
+      width: 256,
+      height: 256
+    });
+    await Promise.all(loadPromises);
+    return div.firstChild;
+  }
+
+  async addSticker(docId) {
+    const image = await this.loadSticker(docId);
+    await waitForImage(image);
+    const width = image.width || image.naturalWidth;
+    const height = image.height || image.naturalHeight;
+    const cropWidth = this.imageWidth - (this.state.crop[0] + this.state.crop[2]);
+    const cropHeight = this.imageHeight - (this.state.crop[1] + this.state.crop[3]);
+    const midx = this.imageWidth / 2 + (this.state.crop[0] - this.state.crop[2]) / 2;
+    const midy = this.imageHeight / 2 + (this.state.crop[1] - this.state.crop[3]) / 2;
+    const size = Math.min(256, Math.min(cropWidth, cropHeight) * 0.3);
+    const scale = size / Math.max(width, height);
+    this.stickerOverlay = {
+      type: 'sticker',
+      image,
+      center: [midx, midy],
+      width,
+      height,
+      scale,
+      angle: 0,
+    };
+    this.overlays.push(this.stickerOverlay);
+    this.commit([1, JSON.stringify(
+      Object.assign({}, this.stickerOverlay, { image: docId }),
+    )]);
+    this.redraw();
+  }
+
   onPointerDown(ev) {
+    this.overlayDragged = false;
     const hit = this.hitTest(...this.clientToImage(ev.clientX, ev.clientY));
     this.drag = {
       hit,
@@ -236,6 +296,10 @@ export default class ImageController extends EventTarget {
     }
     if (hit && hit.type == 'corner') {
       this.drag.angle0 = hit.overlay.angle;
+    }
+    if (hit && (hit.type == 'corner' || hit.type == 'select')) {
+      const { image, ...props } = hit.overlay;
+      this.drag.old = JSON.stringify(props);
     }
     document.addEventListener('pointerup', this.onPointerUp);
     this.redraw();
@@ -277,9 +341,16 @@ export default class ImageController extends EventTarget {
     if (this.mode == 'crop') {
       this.commit();
     }
+    if (this.drag && this.drag.hit && (this.drag.hit.type == 'select' || this.drag.hit.type == 'corner')) {
+      if (this.overlayDragged) {
+        const overlay = this.textOverlay || this.stickerOverlay;
+        const { image, ...props } = overlay;
+        this.commit([2, JSON.stringify(props), this.overlays.indexOf(overlay), this.drag.old]);
+      }
+    }
     if (this.drag && this.drag.hit && this.drag.hit.type == 'select') {
       this.drag = false;
-      this.selectText(this.textOverlay);
+      this.textOverlay && this.selectText(this.textOverlay);
     } else
     if (this.mode == 'text' && (!this.drag || !this.drag.hit)) {
       this.drag = false;
@@ -293,6 +364,7 @@ export default class ImageController extends EventTarget {
         text: '',
         center: this.clientToImage(ev.clientX, ev.clientY),
         width: this.imageWidth / 3,
+        scale: 1,
         angle: 0,
       };
       this.overlays.push(this.textOverlay);
@@ -420,6 +492,7 @@ export default class ImageController extends EventTarget {
         const angle = Math.atan2(pos[0] - overlay.center[0], pos[1] - overlay.center[1]);
         overlay.angle = this.drag.angle0 - (angle - angle0);
         this.updateTextarea();
+        this.overlayDragged = true;
       } else
       if (this.drag.hit && this.drag.hit.type == 'select') {
         const minSnapDist = 10;
@@ -439,6 +512,8 @@ export default class ImageController extends EventTarget {
           this.snappedY = midy;
         }
         this.updateTextarea();
+
+        this.overlayDragged = true;
       } else
       if (this.drawOverlay) {
         this.drawOverlay.points.push(this.clientToImage(ev.clientX, ev.clientY));
@@ -489,10 +564,10 @@ export default class ImageController extends EventTarget {
       const offsy = overlay.type == 'text' ? overlay.size * 0.3 : 0;
       const padx = overlay.type == 'text' ? overlay.size * 0.5 : 0;
       const pady = overlay.type == 'text' ? overlay.size * 0.25 : 0;
-      const x0 = overlay.center[0] - padx - overlay.width / 2;
-      const x1 = overlay.center[0] + padx + overlay.width / 2;
-      const y0 = overlay.center[1] - offsy - pady - overlay.height / 2;
-      const y1 = overlay.center[1] - offsy + pady + overlay.height / 2;
+      const x0 = overlay.center[0] - padx - overlay.width * overlay.scale / 2;
+      const x1 = overlay.center[0] + padx + overlay.width * overlay.scale / 2;
+      const y0 = overlay.center[1] - offsy - pady - overlay.height * overlay.scale / 2;
+      const y1 = overlay.center[1] - offsy + pady + overlay.height * overlay.scale / 2;
       if (overlay === this.textOverlay || overlay === this.stickerOverlay) {
         if (rotDistTo(x0, y0, overlay.center, overlay.angle) < minDist) {
           return { type: 'corner', anchor: 'top-left', overlay };
@@ -527,7 +602,7 @@ export default class ImageController extends EventTarget {
   }
   clientToImage(x, y) {
     const cropWidth = this.imageWidth - (this.mode != 'crop' ? this.state.crop[0] + this.state.crop[2] : 0);
-    const cropHeight = this.imageHeight - (this.mode != 'crop' ?  this.state.crop[1] + this.state.crop[3] : 0) ;
+    const cropHeight = this.imageHeight - (this.mode != 'crop' ?  this.state.crop[1] + this.state.crop[3] : 0);
     
     const scale = this.getImageScale();
     const ox = this.mode != 'crop' ? this.state.crop[0] : 0;
@@ -621,7 +696,7 @@ export default class ImageController extends EventTarget {
       ctx.save();
       ctx.rotate((this.state.rotation + this.state.angle) * Math.PI / 180);
       //ctx.translate(- this.imageWidth / 2, - this.imageHeight / 2);
-      if (this.state.flip) {
+      if (!this.state.flip) { // for some reason images already flipped
         //ctx.translate(cropWidth / 2, cropWidth/2);
         ctx.scale(-1, 1);
         //ctx.translate(-cropWidth / 2, -cropWidth/2);
@@ -726,6 +801,16 @@ export default class ImageController extends EventTarget {
         for (let i = 0; i < lines.length; i++) {
           ctx.fillText(lines[i], x, overlay.center[1] - overlay.height * 0.5 + lineHeight * (i + 0.5));
         }
+      } else
+      if (overlay.type == 'sticker') {
+        ctx.translate(overlay.center[0], overlay.center[1]);
+        ctx.rotate(overlay.angle);
+        ctx.translate(-overlay.center[0], -overlay.center[1]);
+        ctx.drawImage(overlay.image,
+          overlay.center[0] - overlay.width * overlay.scale / 2,
+          overlay.center[1] - overlay.height * overlay.scale / 2,
+          overlay.width * overlay.scale, overlay.height * overlay.scale
+        );
       } else
       if (overlay.type == 'brush') {
         const sz = overlay.size;
@@ -904,10 +989,10 @@ export default class ImageController extends EventTarget {
         const offsy = overlay.type == 'text' ? overlay.size * 0.3 : 0;
         const padx = overlay.type == 'text' ? overlay.size * 0.5 : 0;
         const pady = overlay.type == 'text' ? overlay.size * 0.25 : 0;
-        const x0 = overlay.center[0] - overlay.width / 2 - padx;
-        const y0 = overlay.center[1] - overlay.height / 2 - offsy - pady;
-        const w = overlay.width + padx * 2;
-        const h = overlay.height + pady * 2;
+        const x0 = overlay.center[0] - overlay.width * overlay.scale / 2 - padx;
+        const y0 = overlay.center[1] - overlay.height * overlay.scale / 2 - offsy - pady;
+        const w = overlay.width * overlay.scale + padx * 2;
+        const h = overlay.height * overlay.scale + pady * 2;
         ctx.strokeRect(x0, y0, w, h);
         ctx.fillStyle = '#ffffff';
         ctx.globalAlpha = 1;
@@ -1021,6 +1106,9 @@ export default class ImageController extends EventTarget {
     } else
     if (last[0] == 1) { // A new overlay was added; just pop it from list
       this.overlays.pop();
+    } else
+    if (last[0] == 2) { // Overlay changed
+      this.overlays[last[2]] = Object.assign(this.overlays[last[2]], JSON.parse(last[3]));
     }
     this.adjuster && this.adjuster.apply(this.state.adjustments);
     this.textareaEl.classList.add('is-hidden');
@@ -1031,7 +1119,7 @@ export default class ImageController extends EventTarget {
     this.redraw();
   }
 
-  redo() {
+  async redo() {
     if (!this.isRedoAvailable()) {
       return; // Nothing to redo
     }
@@ -1041,7 +1129,14 @@ export default class ImageController extends EventTarget {
       this.state = JSON.parse(step[1]);
     } else
     if (step[0] == 1) { // A new overlay; just push it to the overlays
-      this.overlays.push(JSON.parse(step[1]));
+      const overlay = JSON.parse(step[1]);
+      if (overlay.type == 'sticker') {
+        overlay.image = await this.loadSticker(overlay.image);
+      }
+      this.overlays.push(overlay);
+    } else
+    if (step[0] == 2) { // Overlay changed
+      this.overlays[step[2]] = Object.assign(this.overlays[step[2]], JSON.parse(step[1]));
     }
     this.adjuster && this.adjuster.apply(this.state.adjustments);
     this.textareaEl.classList.add('is-hidden');
