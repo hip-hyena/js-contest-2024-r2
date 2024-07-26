@@ -916,7 +916,7 @@ export default class PopupNewMedia extends PopupElement {
       const editBtn = Button({parent: buttonsEl, icon: 'sliders'} as any);
       editBtn.addEventListener('click', async() => {
         if(!params.original) {
-          params.original = url;
+          params.original = params.objectURL;
         }
         const image = new Image();
         image.onload = () => {
@@ -1066,7 +1066,7 @@ export default class PopupNewMedia extends PopupElement {
     } as any;
 
     // do not pass these properties to worker
-    defineNotNumerableProperties(params, ['scaledBlob', 'middlewareHelper', 'itemDiv', 'mediaSpoiler', 'original', 'spoilerBtnOn', 'spoilerBtnOff']);
+    defineNotNumerableProperties(params, ['scaledBlob', 'middlewareHelper', 'itemDiv', 'mediaSpoiler', 'original', 'spoilerBtnOn', 'spoilerBtnOff', 'changes']);
 
     params.middlewareHelper = this.middlewareHelper.get().create();
     params.itemDiv = itemDiv;
