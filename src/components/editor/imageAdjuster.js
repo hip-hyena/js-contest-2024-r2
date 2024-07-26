@@ -18,7 +18,15 @@ uniform sampler2D histogram;
 ${uniformsNames.map(name => `uniform float ${name};`).join('\n')}
 uniform vec2 resolution;
 
+const mediump vec3 hsLuminanceWeighting = vec3(0.3, 0.3, 0.3);
+const mediump vec3 satLuminanceWeighting = vec3(0.2126, 0.7152, 0.0722);
+const lowp float permTexUnit = 1.0 / 256.0;
+const lowp float permTexUnitHalf = 0.5 / 256.0;
+const lowp float grainsize = 2.3;
+
 const float PI = 3.14159265358979323846;
+
+// Various conversions
 
 vec3 srgb_to_linear(vec3 srgb) {
   return mix(pow((srgb + 0.055) / 1.055, vec3(2.4)), srgb / 12.92, step(srgb, vec3(0.04045)));
@@ -70,10 +78,6 @@ vec3 oklch_to_oklab(vec3 lch) {
   return vec3(lch.x, lch.y * cos(lch.z), lch.y * sin(lch.z));
 }
 
-float random(vec2 st) {
-  return fract(sin(dot(st.xy, vec2(12.9898, 78.233))) * 43758.5453);
-}
-
 vec3 rgb_to_hsv(vec3 c) {
   vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
   vec4 p = c.g < c.b ? vec4(c.bg, K.wz) : vec4(c.gb, K.xy);
@@ -82,10 +86,71 @@ vec3 rgb_to_hsv(vec3 c) {
   float e = 1.0e-10;
   return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);
 }
+
 lowp vec3 hsv_to_rgb(vec3 c) {
   vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
   vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
   return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+}
+
+highp float get_luma(highp vec3 rgbP) {
+  return (0.299 * rgbP.r) + (0.587 * rgbP.g) + (0.114 * rgbP.b);
+}
+
+highp vec3 rgb_to_yuv(highp vec3 inP) {
+  highp float luma = get_luma(inP);
+  return vec3(luma, (1.0 / 1.772) * (inP.b - luma), (1.0 / 1.402) * (inP.r - luma));
+}
+
+lowp vec3 yuv_to_rgb(highp vec3 inP) {
+  return vec3(1.402 * inP.b + inP.r, (inP.r - (0.299 * 1.402 / 0.587) * inP.b - (0.114 * 1.772 / 0.587) * inP.g), 1.772 * inP.g + inP.r);
+}
+
+// Utilities
+
+float random(vec2 st) {
+  return fract(sin(dot(st.xy, vec2(12.9898, 78.233))) * 43758.5453);
+}
+
+highp vec4 rnm(in highp vec2 tc) {
+  highp float noise = sin(dot(tc, vec2(12.9898, 78.233))) * 43758.5453;
+  return vec4(fract(noise), fract(noise * 1.2154), fract(noise * 1.3453), fract(noise * 1.3647)) * 2.0 - 1.0;
+}
+
+highp float fd(in highp float t) {
+  return t * t * t * (t * (t * 6.0 - 15.0) + 10.0);
+}
+
+highp float pnoise3D(in highp vec3 p) {
+  highp vec3 pi = permTexUnit * floor(p) + permTexUnitHalf;
+  highp vec3 pf = fract(p);
+  highp float perm = rnm(pi.xy).a;
+  highp float n000 = dot(rnm(vec2(perm, pi.z)).rgb * 4.0 - 1.0, pf);
+  highp float n001 = dot(rnm(vec2(perm, pi.z + permTexUnit)).rgb * 4.0 - 1.0, pf - vec3(0.0, 0.0, 1.0));
+  perm = rnm(pi.xy + vec2(0.0, permTexUnit)).a;
+  highp float n010 = dot(rnm(vec2(perm, pi.z)).rgb * 4.0 - 1.0, pf - vec3(0.0, 1.0, 0.0));
+  highp float n011 = dot(rnm(vec2(perm, pi.z + permTexUnit)).rgb * 4.0 - 1.0, pf - vec3(0.0, 1.0, 1.0));
+  perm = rnm(pi.xy + vec2(permTexUnit, 0.0)).a;
+  highp float n100 = dot(rnm(vec2(perm, pi.z)).rgb * 4.0 - 1.0, pf - vec3(1.0, 0.0, 0.0));
+  highp float n101 = dot(rnm(vec2(perm, pi.z + permTexUnit)).rgb * 4.0 - 1.0, pf - vec3(1.0, 0.0, 1.0));
+  perm = rnm(pi.xy + vec2(permTexUnit, permTexUnit)).a;
+  highp float n110 = dot(rnm(vec2(perm, pi.z)).rgb * 4.0 - 1.0, pf - vec3(1.0, 1.0, 0.0));
+  highp float n111 = dot(rnm(vec2(perm, pi.z + permTexUnit)).rgb * 4.0 - 1.0, pf - vec3(1.0, 1.0, 1.0));
+  highp vec4 n_x = mix(vec4(n000, n001, n010, n011), vec4(n100, n101, n110, n111), fd(pf.x));
+  highp vec2 n_xy = mix(n_x.xy, n_x.zw, fd(pf.y));
+  return mix(n_xy.x, n_xy.y, fd(pf.z));
+}
+
+lowp vec2 coord_rot(in lowp vec2 tc, in lowp float angle) {
+  return vec2(((tc.x * 2.0 - 1.0) * cos(angle) - (tc.y * 2.0 - 1.0) * sin(angle)) * 0.5 + 0.5, ((tc.y * 2.0 - 1.0) * cos(angle) + (tc.x * 2.0 - 1.0) * sin(angle)) * 0.5 + 0.5);
+}
+
+lowp float easeInOutSigmoid(lowp float value, lowp float strength) {
+  if (value > 0.5) {
+    return 1.0 - pow(2.0 - 2.0 * value, 1.0 / (1.0 - strength)) * 0.5;
+  } else {
+    return pow(2.0 * value, 1.0 / (1.0 - strength)) * 0.5;
+  }
 }
 
 float equalize(float value) {
@@ -111,65 +176,115 @@ float equalize(float value) {
   return mix(c1_2, c3_4, frac.y);
 }
 
-void main() {
-  vec4 color = texture2D(image, uv);
-  vec3 rgb = srgb_to_linear(color.rgb);
-  vec3 oklch = oklab_to_oklch(linear_srgb_to_oklab(rgb));
+// Actual adjustments
 
-  vec3 enh = oklch;
-  enh.y = min(1.0, enh.y * 1.2);
-  enh.x = min(1.0, equalize(enh.x) * 1.1);
-  oklch = mix(oklch, enh, enhance);
+vec3 apply_enhance(vec3 rgb, float enhance) {
+  vec3 hsv = rgb_to_hsv(rgb);
+  vec3 enhanced = hsv;
+  enhanced.y = min(1.0, enhanced.y * 1.2);
+  enhanced.z = min(1.0, equalize(enhanced.z) * 1.1);
+  return hsv_to_rgb(mix(hsv, enhanced, enhance));
+}
 
-  oklch.x = clamp(oklch.x + brightness, 0.0, 1.0);
-  oklch.x = clamp((oklch.x - 0.5) * (1.0 + contrast) + 0.5, 0.0, 1.0);
-  oklch.y = clamp(oklch.y * (saturation + 1.0), 0.0, 1.0);
+vec3 apply_shadows_highlights(vec3 rgb, float shadows, float highlights) {
+  mediump float hsLuminance = dot(rgb, hsLuminanceWeighting);
+  mediump float shadow = clamp((pow(hsLuminance, 1.0 / shadows) + (-0.76) * pow(hsLuminance, 2.0 / shadows)) - hsLuminance, 0.0, 1.0);
+  mediump float highlight = clamp((1.0 - (pow(1.0 - hsLuminance, 1.0 / (2.0 - highlights)) + (-0.8) * pow(1.0 - hsLuminance, 2.0 / (2.0 - highlights)))) - hsLuminance, -1.0, 0.0);
+  lowp vec3 hsresult = vec3(0.0, 0.0, 0.0) + ((hsLuminance + shadow + highlight) - 0.0) * ((rgb - vec3(0.0, 0.0, 0.0)) / (hsLuminance - 0.0));
+  mediump float contrastedLuminance = ((hsLuminance - 0.5) * 1.5) + 0.5;
+  mediump float whiteInterp = contrastedLuminance * contrastedLuminance * contrastedLuminance;
+  mediump float whiteTarget = clamp(highlights, 1.0, 2.0) - 1.0;
+  hsresult = mix(hsresult, vec3(1.0), whiteInterp * whiteTarget);
+  mediump float invContrastedLuminance = 1.0 - contrastedLuminance;
+  mediump float blackInterp = invContrastedLuminance * invContrastedLuminance * invContrastedLuminance;
+  mediump float blackTarget = 1.0 - clamp(shadows, 0.0, 1.0);
+  return mix(hsresult, vec3(0.0), blackInterp * blackTarget);
+}
 
-  float midpoint = 0.5;
-  float highlight = smoothstep(midpoint, 1.0, oklch.x);
-  float shadow = smoothstep(0.0, midpoint, oklch.x);
-  oklch.x += highlights * highlight * 0.3;
-  oklch.x += shadows * (1.0 - shadow) * 0.3;
+vec3 apply_contrast(vec3 rgb, float contrast) {
+  return clamp(((rgb - vec3(0.5)) * contrast + vec3(0.5)), 0.0, 1.0);
+}
 
-  // oklch.z = mod(oklch.z + warmth * 0.5, 2.0 * PI);
-  
-  vec3 gray = vec3(0.5, 0.0, 0.0);
-  oklch = mix(oklch, gray, fade * 0.6);
-  
-  vec2 center = uv - 0.5;
-  float vignette = 1.0 - dot(center, center) * 4.0 * vignette;
-  oklch.x *= vignette;
+vec3 apply_fade(vec3 rgb, float fade) {
+  return (rgb * (1.0 - fade)) + ((rgb + (vec3(-0.9772) * pow(rgb, vec3(3.0)) + vec3(1.708) * pow(rgb, vec3(2.0)) + vec3(-0.1603) * rgb + vec3(0.2878) - rgb * vec3(0.9))) * fade);
+}
 
-  float grain = (random(uv * resolution) - 0.5) * grain * 0.1;
-  oklch.x += grain;
+vec3 apply_saturation(vec3 rgb, float saturation) {
+  lowp float satLuminance = dot(rgb, satLuminanceWeighting);
+  lowp vec3 greyScaleColor = vec3(satLuminance);
+  return clamp(mix(greyScaleColor, rgb, saturation), 0.0, 1.0);
+}
 
-  oklch.x = clamp(oklch.x, 0.0, 1.0);
-  oklch.y = max(0.0, oklch.y);
+vec3 apply_exposure(vec3 rgb, float exposure) {
+  mediump float mag = exposure * 1.045;
+  mediump float exppower = 1.0 + abs(mag);
+  if (mag < 0.0) {
+    exppower = 1.0 / exppower;
+  }
+  return 1.0 - vec3(pow((1.0 - rgb.r), exppower), pow((1.0 - rgb.g), exppower), pow((1.0 - rgb.b), exppower));
+}
 
-  rgb = oklab_to_linear_srgb(oklch_to_oklab(oklch));
+vec3 apply_warmth(vec3 rgb, float warmth) {
+  highp vec3 yuvVec;
+  if (warmth > 0.0) {
+    yuvVec = vec3(0.1765, -0.1255, 0.0902);
+  } else {
+    yuvVec = -vec3(0.0588, 0.1569, -0.1255);
+  }
+  highp vec3 yuv = rgb_to_yuv(rgb);
+  highp float luma = yuv.r;
+  highp float curveScale = sin(luma * 3.14159);
+  yuv += 0.375 * warmth * curveScale * yuvVec;
+  return yuv_to_rgb(yuv);
+}
 
-  rgb.r += warmth * 0.1;
-  rgb.b -= warmth * 0.1;
+vec3 apply_grain(vec3 rgb, float grain) {
+  highp vec3 rotOffset = vec3(1.425, 3.892, 5.835);
+  highp vec2 rotCoordsR = coord_rot(uv, rotOffset.x);
+  highp vec3 noise = vec3(pnoise3D(vec3(rotCoordsR * vec2(resolution.x / grainsize, resolution.y / grainsize), 0.0)));
+  lowp vec3 lumcoeff = vec3(0.299, 0.587, 0.114);
+  lowp float luminance = dot(rgb, lumcoeff);
+  lowp float lum = smoothstep(0.2, 0.0, luminance);
+  lum += luminance;
+  noise = mix(noise, vec3(0.0), pow(lum, 4.0));
+  return rgb + noise * grain;
+}
 
-  // Vibrance?
-  //float avg = (rgb.r + rgb.g + rgb.b) / 3.0;
-  //float mx = max(rgb.r, max(rgb.g, rgb.b));
-  //float amt = (mx - avg) * (-vibrance * 3.0);
-  //rgb = mix(rgb, vec3(mx), amt);
+vec3 apply_vignette(vec3 rgb, float vignette) {
+  const lowp float midpoint = 0.7;
+  const lowp float fuzziness = 0.62;
+  lowp float radDist = length(uv - 0.5) / sqrt(0.5);
+  lowp float mag = easeInOutSigmoid(radDist * midpoint, fuzziness) * vignette * 0.645;
+  return mix(pow(rgb, vec3(1.0 / (1.0 - mag))), vec3(0.0), mag * mag);
+}
 
-  // rgb = mix(rgb, vec3(0.5), fade);
-
+vec3 apply_sharpen(vec3 rgb, float sharpen) {
   vec2 off = 1.0 / resolution;
   vec3 neighborColors = 
-      srgb_to_linear(texture2D(image, uv + vec2(-off.x, 0)).rgb) +
-      srgb_to_linear(texture2D(image, uv + vec2(off.x, 0)).rgb) +
-      srgb_to_linear(texture2D(image, uv + vec2(0, -off.y)).rgb) +
-      srgb_to_linear(texture2D(image, uv + vec2(0, off.y)).rgb);
-  vec3 sharpened = 2.0 * rgb - 0.25 * neighborColors;
-  rgb = mix(rgb, sharpened, sharpen * 1.5);
+    texture2D(image, uv + vec2(-off.x, 0)).rgb +
+    texture2D(image, uv + vec2(off.x, 0)).rgb +
+    texture2D(image, uv + vec2(0, -off.y)).rgb +
+    texture2D(image, uv + vec2(0, off.y)).rgb;
+  return rgb * (1.0 + 4.0 * sharpen) - neighborColors * sharpen;
+}
 
-  color.rgb = linear_to_srgb(rgb);
-  gl_FragColor = clamp(color, 0.0, 1.0);
+void main() {
+  vec4 color = texture2D(image, uv);
+  vec3 rgb = color.rgb;
+
+  rgb = clamp(apply_sharpen(rgb, 0.11 + sharpen * 0.6), 0.0, 1.0);
+  
+  rgb = apply_enhance(rgb, enhance);
+  rgb = apply_shadows_highlights(rgb, shadows * 0.55 + 1.0, highlights * 0.75 + 1.0);
+  rgb = apply_contrast(rgb, contrast * 0.3 + 1.0);
+  rgb = apply_fade(rgb, fade);
+  rgb = apply_saturation(rgb, saturation * (saturation > 0.0 ? 1.05 : 1.0) + 1.0);
+  rgb = apply_exposure(rgb, brightness);
+  rgb = apply_warmth(rgb, warmth);
+  rgb = apply_grain(rgb, grain * 0.04);
+  rgb = apply_vignette(rgb, vignette);
+
+  gl_FragColor = clamp(vec4(rgb, color.a), 0.0, 1.0);
 }
 `;
 
