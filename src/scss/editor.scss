@@ -430,6 +430,7 @@ input[type=range].a-color-picker__hue::-ms-thumb {
   outline: 2px solid var(--border-color);
   background-color: var(--color);
   cursor: pointer;
+  touch-action: none;
   border-radius: 22px;
 }
 .a-color-picker__color-box {
@@ -438,6 +439,7 @@ input[type=range].a-color-picker__hue::-ms-thumb {
   height: 100%;
   margin-right: 24px;
   border-radius: 10px;
+  touch-action: none;
   background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.3) 49.91%, #000000 100%), linear-gradient(90deg, #FFFFFF 0%, var(--hue) 100%);
 }
 .a-color-picker__hex, .a-color-picker__rgb {
@@ -474,6 +476,7 @@ input[type=range].a-color-picker__hue::-ms-thumb {
   left: 0;
   transform-origin: top left;
   user-select: none;
+  touch-action: none;
 }
 
 .a-image-editor__image textarea {
@@ -519,6 +522,7 @@ input[type=range].a-color-picker__hue::-ms-thumb {
   width: 600px;
   cursor: grab;
   user-select: none;
+  touch-action: none;
 
   -webkit-mask-image: linear-gradient(to right, rgba(0, 0, 0, 0), rgba(0, 0, 0, 1), rgba(0, 0, 0, 0));
   mask-image: linear-gradient(to right, rgba(0, 0, 0, 0), rgba(0, 0, 0, 1), rgba(0, 0, 0, 0));
