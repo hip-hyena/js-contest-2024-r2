@@ -48,7 +48,9 @@ export default class OverlayClickHandler extends EventListenerBase<{
 
   public close() {
     if(this.element) {
-      this.overlay?.remove();
+      if(!this.element.classList.contains('is-submenu')) {
+        this.overlay?.remove();
+      }
       this.element = undefined;
       this.dispatchEvent('toggle', false);
     }
@@ -65,7 +67,7 @@ export default class OverlayClickHandler extends EventListenerBase<{
     }
   }
 
-  public open(element = document.body) {
+  public open(element = document.body, submenu: boolean = false) {
     this.close();
 
     if(!IS_MOBILE_SAFARI && this.navigationType) {
@@ -91,7 +93,7 @@ export default class OverlayClickHandler extends EventListenerBase<{
     }
 
     const isRoot = this.element === document.body;
-    if(this.overlay) {
+    if(this.overlay && !this.element.classList.contains('is-submenu')) {
       if(isRoot) {
         this.element.append(this.overlay);
       } else {

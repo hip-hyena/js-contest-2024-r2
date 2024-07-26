@@ -328,6 +328,7 @@
     .btn-menu {
       min-width: 260px;
       max-height: calc(100 * var(--vh) - 3.75rem);
+      overflow: visible;
 
       &-item {
         --padding-right: .375rem;
@@ -339,6 +340,13 @@
             margin-right: .75rem;
           }
         }
+      }
+
+      .btn-menu-overlay {
+        display: none;
+      }
+      &.is-submenu {
+        position: fixed;
       }
     }
   }
@@ -560,6 +568,16 @@
       width: 100%;
     }
   }
+}
+.is-submenu-open #column-left {
+  z-index: 100;
+}
+.is-submenu-open #column-left .tabs-container {
+  z-index: 100;
+}
+.has-inner > .btn-menu-item-icon-right {
+  transform: translateX(-8px);
+  opacity: 0.4;
 }
 
 #search-container {

@@ -38,7 +38,7 @@ export function ButtonMenuToggleHandler({
     } else {
       const result = onOpen?.(e);
       const open = () => {
-        const openedMenu = el.querySelector('.btn-menu') as HTMLDivElement;
+        const openedMenu = el.querySelector('.btn-menu:not(.is-submenu)') as HTMLDivElement;
         if(!openedMenu) {
           return;
         }

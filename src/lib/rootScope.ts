@@ -210,6 +210,8 @@ export class RootScope extends EventListenerBase<BroadcastEventsListeners> {
   public managers: AppManagers;
   public premium: boolean;
 
+  public authPagesEl: HTMLElement;
+
   constructor() {
     super();
 

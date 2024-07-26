@@ -4,12 +4,13 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {ButtonMenuItemOptions} from '../components/buttonMenu';
+import {ButtonMenuItemOptions, ButtonMenuSync} from '../components/buttonMenu';
 import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
 import findUpClassName from './dom/findUpClassName';
 import mediaSizes from './mediaSizes';
 import OverlayClickHandler from './overlayClickHandler';
 import overlayCounter from './overlayCounter';
+import positionMenu from './positionMenu';
 
 class ContextMenuController extends OverlayClickHandler {
   constructor() {
@@ -33,9 +34,10 @@ class ContextMenuController extends OverlayClickHandler {
     return !!this.element;
   }
 
-  private onMouseMove = (e: MouseEvent) => {
+  private onMouseMove = async(e: MouseEvent) => {
     const element = findUpClassName(e.target, 'btn-menu-item');
     const inner = (element as any)?.inner as ButtonMenuItemOptions['inner'];
+    // console.log('inner: ', inner);
 
     const rect = this.element.getBoundingClientRect();
     const {clientX, clientY} = e;
@@ -43,7 +45,7 @@ class ContextMenuController extends OverlayClickHandler {
     const diffX = clientX >= rect.right ? clientX - rect.right : rect.left - clientX;
     const diffY = clientY >= rect.bottom ? clientY - rect.bottom : rect.top - clientY;
 
-    if(diffX >= 100 || diffY >= 100) {
+    if((diffX >= 100 || diffY >= 100) && !(window as any).disableMenuClosing) {
       this.close();
       // openedMenu.parentElement.click();
     }
@@ -53,7 +55,17 @@ class ContextMenuController extends OverlayClickHandler {
   public close() {
     if(this.element) {
       this.element.classList.remove('active');
-      this.element.parentElement.classList.remove('menu-open');
+      if(!this.element.classList.contains('is-submenu')) {
+        this.element.parentElement.classList.remove('menu-open');
+        for(let i = 0; i < this.element.parentElement.children.length; i++) {
+          const child = this.element.parentElement.children[i];
+          if(child.classList.contains('is-submenu')) {
+            child.classList.remove('active');
+          }
+        }
+      } else {
+        document.body.classList.remove('is-submenu-open');
+      }
 
       if(this.element.classList.contains('night')) {
         const element = this.element;
@@ -74,18 +86,20 @@ class ContextMenuController extends OverlayClickHandler {
     }
   }
 
-  public openBtnMenu(element: HTMLElement, onClose?: () => void) {
+  public openBtnMenu(element: HTMLElement, onClose?: () => void, submenu: boolean = false) {
     if(overlayCounter.isDarkOverlayActive) {
       element.classList.add('night');
     }
 
-    super.open(element);
+    super.open(element, submenu);
 
     this.element.classList.add('active', 'was-open');
     this.element.parentElement.classList.add('menu-open');
 
     if(onClose) {
-      this.addEventListener('toggle', onClose, {once: true});
+      this.addEventListener('toggle', (open: boolean) => {
+        !open && onClose();
+      }, {once: true});
     }
 
     if(!IS_TOUCH_SUPPORTED) {

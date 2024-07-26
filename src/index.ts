@@ -6,6 +6,7 @@
 
 /* @refresh reload */
 
+import appAccountManager from './lib/appManagers/appAccountManager';
 import App from './config/app';
 import blurActiveElement from './helpers/dom/blurActiveElement';
 import cancelEvent from './helpers/dom/cancelEvent';
@@ -39,6 +40,7 @@ import {nextRandomUint} from './helpers/random';
 import {IS_OVERLAY_SCROLL_SUPPORTED, USE_CUSTOM_SCROLL, USE_NATIVE_SCROLL} from './environment/overlayScrollSupport';
 import IMAGE_MIME_TYPES_SUPPORTED, {IMAGE_MIME_TYPES_SUPPORTED_PROMISE} from './environment/imageMimeTypesSupport';
 import MEDIA_MIME_TYPES_SUPPORTED from './environment/mediaMimeTypesSupport';
+import getPeerTitle from './components/wrappers/getPeerTitle';
 // import appNavigationController from './components/appNavigationController';
 
 IMAGE_MIME_TYPES_SUPPORTED_PROMISE.then((mimeTypes) => {
@@ -388,26 +390,34 @@ IMAGE_MIME_TYPES_SUPPORTED_PROMISE.then((mimeTypes) => {
     // appNavigationController.overrideHash('?tgaddr=' + encodeURIComponent(params.tgaddr));
   }
 
+  const authCloseBtn = document.getElementById('auth-close-btn');
+  if(appAccountManager.accounts.length > 1) {
+    authCloseBtn.style.display = 'block';
+    authCloseBtn.addEventListener('click', () => {
+      appAccountManager.undo();
+    });
+  }
+
+  const el = rootScope.authPagesEl = document.getElementById('auth-pages');
+  let scrollable: HTMLElement;
+  if(el) {
+    scrollable = el.querySelector('.scrollable') as HTMLElement;
+    if((!IS_TOUCH_SUPPORTED || IS_MOBILE_SAFARI)) {
+      scrollable.classList.add('no-scrollbar');
+    }
+
+    // * don't remove this line
+    scrollable.style.opacity = '0';
+
+    const placeholder = document.createElement('div');
+    placeholder.classList.add('auth-placeholder');
+
+    scrollable.prepend(placeholder);
+    scrollable.append(placeholder.cloneNode());
+  }
+
   if(authState._ !== 'authStateSignedIn'/*  || 1 === 1 */) {
     console.log('Will mount auth page:', authState._, Date.now() / 1000);
-
-    const el = document.getElementById('auth-pages');
-    let scrollable: HTMLElement;
-    if(el) {
-      scrollable = el.querySelector('.scrollable') as HTMLElement;
-      if((!IS_TOUCH_SUPPORTED || IS_MOBILE_SAFARI)) {
-        scrollable.classList.add('no-scrollbar');
-      }
-
-      // * don't remove this line
-      scrollable.style.opacity = '0';
-
-      const placeholder = document.createElement('div');
-      placeholder.classList.add('auth-placeholder');
-
-      scrollable.prepend(placeholder);
-      scrollable.append(placeholder.cloneNode());
-    }
 
     try {
       await Promise.all([
@@ -490,5 +500,8 @@ IMAGE_MIME_TYPES_SUPPORTED_PROMISE.then((mimeTypes) => {
     console.log('Will mount IM page:', Date.now() / 1000);
     fadeInWhenFontsReady(document.getElementById('main-columns'), loadFonts());
     (await import('./pages/pageIm')).default.mount();
+    /* rootScope.addEventListener('peer_title_edit', (data) => {
+      console.log('peer_title_edit', data);
+    }); */
   }
 });

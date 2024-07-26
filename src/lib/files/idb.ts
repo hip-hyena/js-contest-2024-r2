@@ -13,6 +13,7 @@ import {Database} from '../../config/databases';
 import Modes from '../../config/modes';
 import makeError from '../../helpers/makeError';
 import safeAssign from '../../helpers/object/safeAssign';
+import appAccountManager from '../appManagers/appAccountManager';
 import {logger} from '../logger';
 
 /**
@@ -45,6 +46,7 @@ export class IDB {
   private storageIsAvailable: boolean;
   private log: ReturnType<typeof logger>;
   private name: string;
+  private suffix: string;
   private version: number;
   private stores: IDBStore[];
 
@@ -97,26 +99,26 @@ export class IDB {
       createIndexes(os, store);
     };
 
-    try {
-      var request = indexedDB.open(this.name, this.version);
+    this.openDbPromise = new Promise<IDBDatabase>(async(resolve, reject) => {
+      this.suffix = await appAccountManager.dbSuffix();
 
-      if(!request) {
-        return Promise.reject();
+      try {
+        var request = indexedDB.open(this.name + this.suffix, this.version);
+        if(!request) {
+          return reject();
+        }
+      } catch(error) {
+        this.log.error('error opening db', (error as Error).message);
+        this.storageIsAvailable = false;
+        return reject(error);
       }
-    } catch(error) {
-      this.log.error('error opening db', (error as Error).message);
-      this.storageIsAvailable = false;
-      return Promise.reject(error);
-    }
+      let finished = false;
+      setTimeout(() => {
+        if(!finished) {
+          request.onerror(makeError('IDB_CREATE_TIMEOUT') as Event);
+        }
+      }, 3000);
 
-    let finished = false;
-    setTimeout(() => {
-      if(!finished) {
-        request.onerror(makeError('IDB_CREATE_TIMEOUT') as Event);
-      }
-    }, 3000);
-
-    return this.openDbPromise = new Promise<IDBDatabase>((resolve, reject) => {
       request.onsuccess = (event) => {
         finished = true;
         const db = request.result;
@@ -185,6 +187,7 @@ export class IDB {
         });
       };
     });
+    return this.openDbPromise;
   }
 
   public static create<T extends Database<any>>(db: T) {

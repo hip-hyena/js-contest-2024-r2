@@ -13,6 +13,7 @@ import Modes from '../config/modes';
 import {IS_WORKER} from '../helpers/context';
 import makeError from '../helpers/makeError';
 import {WorkerTaskTemplate} from '../types';
+import appAccountManager from './appManagers/appAccountManager';
 import MTProtoMessagePort from './mtproto/mtprotoMessagePort';
 // import { stringify } from '../helpers/json';
 
@@ -33,7 +34,7 @@ class LocalStorage<Storage extends Record<string, any>> {
     } else if(this.useStorage) {
       let value: Storage[T];
       try {
-        value = localStorage.getItem(this.prefix + (key as string)) as any;
+        value = localStorage.getItem(this.prefix + appAccountManager.dbPrefixSync() + (key as string)) as any;
       } catch(err) {
         this.useStorage = false;
         throw makeError('STORAGE_OFFLINE');
@@ -69,7 +70,7 @@ class LocalStorage<Storage extends Record<string, any>> {
             }
 
             const stringified = JSON.stringify(value);
-            localStorage.setItem(this.prefix + key, stringified);
+            localStorage.setItem(this.prefix + appAccountManager.dbPrefixSync() + key, stringified);
           } catch(err) {
             this.useStorage = false;
             lastError = err;
@@ -93,7 +94,7 @@ class LocalStorage<Storage extends Record<string, any>> {
 
     // if(this.useStorage) {
     try {
-      localStorage.removeItem(this.prefix + (key as string));
+      localStorage.removeItem(this.prefix + appAccountManager.dbPrefixSync() + (key as string));
     } catch(err) {
 
     }

@@ -143,6 +143,50 @@ function ButtonMenuItem(options: ButtonMenuItemOptions) {
     }
   }/*  : onClick */, options.options);
 
+  if(options.inner) {
+    el.addEventListener('mouseover', async() => {
+      const opts: any = el as any;
+      if(!opts.submenuEl) {
+        const inner = options.inner;
+        const innerOpts: any = await (typeof inner == 'function' ? inner() : inner);
+        opts.submenuEl = ButtonMenuSync(innerOpts);
+        opts.submenuEl.classList.add('is-submenu');
+        el.parentElement.parentElement.appendChild(opts.submenuEl);
+        innerOpts.onOpen && innerOpts.onOpen(opts.submenuEl);
+      }
+      const submenuEl = opts.submenuEl;
+      if(!submenuEl.classList.contains('active')) {
+        const elpos = el.getBoundingClientRect();
+        const parentpos = el.parentElement.parentElement.getBoundingClientRect();
+        submenuEl.style.left = `${elpos.x + elpos.width - 5}px`;
+        submenuEl.style.top = `${elpos.y - parentpos.y}px`;
+        submenuEl.style.zIndex = '100';
+        submenuEl.style.display = 'block';
+        (window as any).disableMenuClosing = true;
+        // positionMenu(e, submenuEl, 'right');
+        document.body.classList.add('is-submenu-open');
+        submenuEl.classList.add('active');
+        // contextMenuController.openBtnMenu(submenuEl, null, true);
+        /* setTimeout(() => {
+          (window as any).disableMenuClosing = false;
+        }, 500); */
+      }
+    });
+    el.addEventListener('mouseleave', (ev) => {
+      if(ev.relatedTarget) {
+        const menu = findUpClassName(ev.relatedTarget, 'btn-menu');
+        if(menu && menu.classList.contains('is-submenu')) {
+          return;
+        }
+      }
+      const opts: any = el as any;
+      if(opts.submenuEl) {
+        opts.submenuEl.classList.remove('active');
+        (window as any).disableMenuClosing = false;
+      }
+    });
+  }
+
   if(checkboxField) {
     el.append(checkboxField.label);
   }
