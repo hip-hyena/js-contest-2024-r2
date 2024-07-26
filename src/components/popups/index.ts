@@ -366,6 +366,10 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
           return;
         }
 
+        if((e.target as HTMLElement).classList.contains('a-image-editor__textarea')) {
+          return;
+        }
+
         if(this.confirmShortcutIsSendShortcut ? isSendShortcutPressed(e) : e.key === 'Enter') {
           simulateClickEvent(this.btnConfirmOnEnter);
           cancelEvent(e);

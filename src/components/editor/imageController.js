@@ -1,5 +1,5 @@
 import ImageAdjuster from './imageAdjuster.js';
-import { distance, fitCubicBezier, getContrastColor, hexToRgb, interpolatePoint, rgbToHex, simplify } from './utils.js';
+import { addStackedRects, distance, fitCubicBezier, getContrastColor, hexToRgb, interpolatePoint, rgbToHex, simplify } from './utils.js';
 import wrapSticker from '../wrappers/sticker.ts';
 import createMiddleware from '../../helpers/solid/createMiddleware.ts';
 
@@ -800,6 +800,7 @@ export default class ImageController extends EventTarget {
         if (overlay.style == 'fill') {
           ctx.fillStyle = overlay.color;
           ctx.beginPath();
+          const rects = [];
           for (let i = 0; i < lines.length; i++) {
             const size = ctx.measureText(lines[i]);
             let x = overlay.center[0] - overlay.width * 0.5 - overlay.size * 0.35;
@@ -811,13 +812,9 @@ export default class ImageController extends EventTarget {
               x += overlay.width - size.width;
             }
             const y = overlay.center[1] - overlay.height * 0.5 + lineHeight * (i + 0.5);
-            ctx.roundRect(
-              x, 
-              y - lineHeight * 0.76, 
-              width, 
-              lineHeight, 
-              overlay.size * 0.5);
+            rects.push([x, y - lineHeight * 0.76, width, lineHeight]);
           }
+          addStackedRects(ctx, rects, overlay.size * 0.5);
           ctx.fill();
           ctx.fillStyle = getContrastColor(overlay.color);
         } else {

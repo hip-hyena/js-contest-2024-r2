@@ -223,6 +223,68 @@ export function distance(p1, p2) {
   return Math.sqrt(dx * dx + dy * dy);
 }
 
+export function addStackedRects(ctx, rects, radius) {
+  if (!rects.length) return;
+  const first = rects[0];
+  const last = rects[rects.length - 1];
+  if (rects.length == 1) {
+    ctx.roundRect(first[0], first[1], first[2], first[3], radius);
+    return;
+  }
+  
+  const rt = Math.min(radius, first[2] * 0.5);
+  ctx.moveTo(first[0], first[1] + rt);
+  ctx.arcTo(first[0], first[1], first[0] + rt, first[1], rt);
+  ctx.arcTo(first[0] + first[2], first[1], first[0] + first[2], first[1] + rt, rt);
+
+  // Right side
+  const minr = radius * 0.75;
+  for (let i = 1; i < rects.length; i++) {
+    const r0 = rects[i - 1], r1 = rects[i];
+    const x0 = r0[0] + r0[2], x1 = r1[0] + r1[2], y1 = r1[1];
+    let r = Math.abs(x1 - x0) * 0.5;
+    if (r >= minr) {
+      r = Math.min(radius, r * 1.1);
+      ctx.arcTo(x0, y1, x1, y1, r);
+      ctx.arcTo(x1, y1, x1, y1 + r, r);
+    } else
+    if (r >= radius * 0.6) {
+      ctx.lineTo(x0, y1 - radius);
+      ctx.bezierCurveTo(x0, y1, (x0 + x1) / 2, y1, (x0 + x1) / 2, y1);
+      ctx.bezierCurveTo((x0 + x1) / 2, y1, x1, y1, x1, y1 + radius);
+    } else {
+      ctx.lineTo(x0, y1 - radius);
+      ctx.bezierCurveTo(x0, y1, x1, y1, x1, y1 + radius);
+    }
+  }
+
+  const rb = Math.min(radius, last[2] * 0.5);
+  ctx.arcTo(last[0] + last[2], last[1] + last[3], last[0] + last[2] - rb, last[1] + last[3], rb);
+  ctx.arcTo(last[0], last[1] + last[3], last[0], last[1] + last[3] - rb, rb);
+
+  // Left side
+  for (let i = rects.length - 1; i >= 1; i--) {
+    const r0 = rects[i], r1 = rects[i - 1];
+    const x0 = r0[0], x1 = r1[0], y1 = r0[1];
+    let r = Math.abs(x1 - x0) * 0.5;
+    if (r >= minr) {
+      r = Math.min(radius, r * 1.1);
+      ctx.arcTo(x0, y1, x1, y1, r);
+      ctx.arcTo(x1, y1, x1, y1 - r, r);
+    } else
+    if (r >= radius * 0.6) {
+      ctx.lineTo(x0, y1 + radius);
+      ctx.bezierCurveTo(x0, y1, (x0 + x1) / 2, y1, (x0 + x1) / 2, y1);
+      ctx.bezierCurveTo((x0 + x1) / 2, y1, x1, y1, x1, y1 - radius);
+    } else {
+      ctx.lineTo(x0, y1 + radius);
+      ctx.bezierCurveTo(x0, y1, x1, y1, x1, y1 - radius);
+    }
+  }
+
+  ctx.closePath();
+}
+
 export class CallbackManager { // Yet another velosiped
   constructor() {
     this.eventListeners = [];
