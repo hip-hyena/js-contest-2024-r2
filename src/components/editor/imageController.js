@@ -1082,18 +1082,24 @@ export default class ImageController extends EventTarget {
   }
 
   renderFinalImage() {
-    const canvas = document.createElement('canvas');
-    canvas.width = this.imageWidth - this.state.crop[0] - this.state.crop[2];
-    canvas.height = this.imageHeight - this.state.crop[1] - this.state.crop[3];
-    const ctx = canvas.getContext('2d');
-    this.redraw(ctx, true);
-    return {
-      url: canvas.toDataURL('image/jpeg', 1),
-      size: {
-        width: canvas.width,
-        height: canvas.height,
-      }
-    }
+    return new Promise((resolve) => {
+      const canvas = document.createElement('canvas');
+      canvas.width = this.imageWidth - this.state.crop[0] - this.state.crop[2];
+      canvas.height = this.imageHeight - this.state.crop[1] - this.state.crop[3];
+      const ctx = canvas.getContext('2d');
+      this.redraw(ctx, true);
+      canvas.toBlob((blob) => {
+        resolve({
+          blob,
+          url: URL.createObjectURL(blob),
+          // url: canvas.toDataURL('image/jpeg', 1),
+          size: {
+            width: canvas.width,
+            height: canvas.height,
+          }
+        });
+      }, 'image/jpeg');
+    });
   }
 
   change(diff) {

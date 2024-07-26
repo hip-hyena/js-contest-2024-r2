@@ -927,6 +927,7 @@ export default class PopupNewMedia extends PopupElement {
             changes: params.changes || null
           });
           editor.addEventListener('confirm', (ev: any) => {
+            params.file = ev.image.blob; // new File([ev.image.blob], 'edited.jpg', {type: 'image/jpeg'});
             params.objectURL = ev.image.url;
             params.scaledBlob = null;
             params.width = ev.image.size.width;

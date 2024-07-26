@@ -86,9 +86,9 @@ export default class ImageEditor extends EventTarget {
     this.el.remove();
   }
 
-  confirm() {
+  async confirm() {
     const ev = new Event('confirm');
-    ev.image = this.controller.renderFinalImage();
+    ev.image = await this.controller.renderFinalImage();
     ev.changes = this.controller.saveState();
     this.dismiss();
     this.dispatchEvent(ev);
