@@ -553,7 +553,8 @@ export default class ImageController extends EventTarget {
       const [rx, ry] = rot(center, angle);
       return (rx - x0) * (rx - x0) + (ry - y0) * (ry - y0);
     }
-    const minDist = 5 * 5;
+    const scale = this.getImageScale();
+    const minDist = 5 * 5 / (scale * scale);
 
     if (this.mode == 'crop') {
       if (distTo(this.state.crop[0], this.state.crop[1]) < minDist) {
@@ -759,7 +760,7 @@ export default class ImageController extends EventTarget {
     // Snapping guidelines
     if (!cropped) {
       ctx.strokeStyle = '#4fc1ff';
-      ctx.lineWidth = 1;
+      ctx.lineWidth = 1 * dp / viewScale;
       if (this.snappedX !== false) {
         ctx.beginPath();
         ctx.moveTo(this.snappedX, 0);
@@ -1006,8 +1007,9 @@ export default class ImageController extends EventTarget {
         ctx.rotate(overlay.angle);
         ctx.translate(-overlay.center[0], -overlay.center[1]);
         ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 1 * dp / viewScale;
         ctx.globalAlpha = 0.3;
-        ctx.setLineDash([2, 5]);
+        ctx.setLineDash([2 * dp / viewScale, 5 * dp / viewScale]);
         const offsy = overlay.type == 'text' ? overlay.size * 0.3 : 0;
         const padx = overlay.type == 'text' ? overlay.size * 0.5 : 0;
         const pady = overlay.type == 'text' ? overlay.size * 0.25 : 0;
@@ -1018,17 +1020,18 @@ export default class ImageController extends EventTarget {
         ctx.strokeRect(x0, y0, w, h);
         ctx.fillStyle = '#ffffff';
         ctx.globalAlpha = 1;
+        const r = 4 * dp / viewScale;
         ctx.beginPath();
-        ctx.arc(x0, y0, 4, 0, 2 * Math.PI, false);
+        ctx.arc(x0, y0, r, 0, 2 * Math.PI, false);
         ctx.fill();
         ctx.beginPath();
-        ctx.arc(x0 + w, y0, 4, 0, 2 * Math.PI, false);
+        ctx.arc(x0 + w, y0, r, 0, 2 * Math.PI, false);
         ctx.fill();
         ctx.beginPath();
-        ctx.arc(x0, y0 + h, 4, 0, 2 * Math.PI, false);
+        ctx.arc(x0, y0 + h, r, 0, 2 * Math.PI, false);
         ctx.fill();
         ctx.beginPath();
-        ctx.arc(x0 + w, y0 + h, 4, 0, 2 * Math.PI, false);
+        ctx.arc(x0 + w, y0 + h, r, 0, 2 * Math.PI, false);
         ctx.fill();
         ctx.restore();
       }
@@ -1046,7 +1049,7 @@ export default class ImageController extends EventTarget {
       ctx.translate(- this.imageWidth / 2, - this.imageHeight / 2);
       
       ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 1;
+      ctx.lineWidth = 1 * dp / viewScale;
       ctx.globalAlpha = 0.33;
       ctx.beginPath();
       const x0 = this.state.crop[0];
@@ -1065,17 +1068,18 @@ export default class ImageController extends EventTarget {
       ctx.stroke();
       ctx.globalAlpha = 1;
       ctx.fillStyle = '#ffffff';
+      const r = 4 * dp / viewScale;
       ctx.beginPath();
-      ctx.arc(x0, y0, 4, 0, 2 * Math.PI, false);
+      ctx.arc(x0, y0, r, 0, 2 * Math.PI, false);
       ctx.fill();
       ctx.beginPath();
-      ctx.arc(x0 + w, y0, 4, 0, 2 * Math.PI, false);
+      ctx.arc(x0 + w, y0, r, 0, 2 * Math.PI, false);
       ctx.fill();
       ctx.beginPath();
-      ctx.arc(x0, y0 + h, 4, 0, 2 * Math.PI, false);
+      ctx.arc(x0, y0 + h, r, 0, 2 * Math.PI, false);
       ctx.fill();
       ctx.beginPath();
-      ctx.arc(x0 + w, y0 + h, 4, 0, 2 * Math.PI, false);
+      ctx.arc(x0 + w, y0 + h, r, 0, 2 * Math.PI, false);
       ctx.fill();
       ctx.restore();
     }
