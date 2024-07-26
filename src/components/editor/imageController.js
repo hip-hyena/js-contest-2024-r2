@@ -13,10 +13,11 @@ function waitForImage(img) {
   });
 }
 export default class ImageController extends EventTarget {
-  constructor({ el, managers }) {
+  constructor({ el, managers, callbacks }) {
     super();
     this.el = el;
     this.managers = managers;
+    this.callbacks = callbacks;
     this.canvasEl = document.createElement('canvas');
     this.maskCanvas = document.createElement('canvas');
     this.blurCanvas = document.createElement('canvas');
@@ -46,22 +47,10 @@ export default class ImageController extends EventTarget {
     this.onPointerDown = this.onPointerDown.bind(this);
     this.onPointerUp = this.onPointerUp.bind(this);
     this.onPointerMove = this.onPointerMove.bind(this);
-    this.canvasEl.addEventListener('pointerdown', this.onPointerDown);
-    this.canvasEl.addEventListener('pointermove', this.onPointerMove);
-    this.textareaEl.addEventListener('input', () => {
-      this.textareaEl.style.width = 0;
-      this.textareaEl.style.width = this.textareaEl.scrollWidth + 'px';
-      this.textareaEl.style.height = 0;
-      this.textareaEl.style.height = this.textareaEl.scrollHeight + 'px';
-      if (!this.textOverlay) {
-        return;
-      }
-      this.textOverlay.text = this.textareaEl.value;
-      this.textOverlay.width = this.clientSizeToImage(this.textareaEl.scrollWidth);
-      this.textOverlay.height = this.clientSizeToImage(this.textareaEl.scrollHeight);
-      this.commitDebounced();
-      this.redraw();
-    });
+    this.onTextareaInput = this.onTextareaInput.bind(this);
+    callbacks.listen(this.canvasEl, 'pointerdown', this.onPointerDown);
+    callbacks.listen(this.canvasEl, 'pointermove', this.onPointerMove);
+    callbacks.listen(this.textareaEl, 'input', this.onTextareaInput);
     this.drag = false;
 
     this.state = {
@@ -105,11 +94,30 @@ export default class ImageController extends EventTarget {
 
     let debounceTimer;
     this.commitDebounced = (arg) => {
-      window.clearTimeout(debounceTimer);
-      debounceTimer = window.setTimeout(() => {
+      this.callbacks.clearTimeout(debounceTimer);
+      debounceTimer = this.callbacks.timeout(() => {
         this.commit(arg);
       }, 1000);
     };
+  }
+
+  destroy() {
+    this.destroyed = true;
+  }
+
+  onTextareaInput() {
+    this.textareaEl.style.width = 0;
+    this.textareaEl.style.width = this.textareaEl.scrollWidth + 'px';
+    this.textareaEl.style.height = 0;
+    this.textareaEl.style.height = this.textareaEl.scrollHeight + 'px';
+    if (!this.textOverlay) {
+      return;
+    }
+    this.textOverlay.text = this.textareaEl.value;
+    this.textOverlay.width = this.clientSizeToImage(this.textareaEl.scrollWidth);
+    this.textOverlay.height = this.clientSizeToImage(this.textareaEl.scrollHeight);
+    this.commitDebounced();
+    this.redraw();
   }
 
   setCropAspect(aspect) {
@@ -153,13 +161,13 @@ export default class ImageController extends EventTarget {
 
     this._cropAnimNext = newMode == 'crop' ? 1 : 0;
     if (this._cropAnim != this._cropAnimNext) {
-      clearInterval(this._cropTimer);
+      this.callbacks.clearInterval(this._cropTimer);
       const step = this._cropAnim < this._cropAnimNext ? 0.1 : -0.1;
-      this._cropTimer = setInterval(() => {
+      this._cropTimer = this.callbacks.interval(() => {
         this._cropAnim += step;
         if ((step > 0 && this._cropAnim >= this._cropAnimNext) || (step < 0 && this._cropAnim <= this._cropAnimNext)) {
           this._cropAnim = this._cropAnimNext;
-          clearInterval(this._cropAnim);
+          this.callbacks.clearInterval(this._cropAnim);
         }
         this.redraw();
       }, 16);
@@ -301,7 +309,7 @@ export default class ImageController extends EventTarget {
       const { image, ...props } = hit.overlay;
       this.drag.old = JSON.stringify(props);
     }
-    document.addEventListener('pointerup', this.onPointerUp);
+    this.callbacks.listen(document, 'pointerup', this.onPointerUp);
     this.redraw();
   }
 
@@ -418,7 +426,7 @@ export default class ImageController extends EventTarget {
     }
     this.drag = false;
     this.drawOverlay = null;
-    document.removeEventListener('pointerup', this.onPointerUp);
+    this.callbacks.unlisten(document, 'pointerup', this.onPointerUp);
     this.updateCursor(ev);
     this.redraw();
   }
@@ -646,7 +654,7 @@ export default class ImageController extends EventTarget {
   }
 
   redraw(targetCtx, cropped) {
-    if (!this.image || !this.adjuster) {
+    if (!this.image || !this.adjuster || this.destroyed) {
       return;
     }
     const ctx = targetCtx || this.ctx;

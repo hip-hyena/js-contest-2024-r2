@@ -1,7 +1,7 @@
 import { makeEl } from '../utils.js';
 
 export default class AngleSlider extends EventTarget {
-  constructor({ parent }) {
+  constructor({ parent, callbacks }) {
     super();
     this.el = makeEl('div', 'a-angle-slider', { parent });
 
@@ -24,7 +24,8 @@ export default class AngleSlider extends EventTarget {
     this.onPointerDown = this.onPointerDown.bind(this);
     this.onPointerUp = this.onPointerUp.bind(this);
     this.onPointerMove = this.onPointerMove.bind(this);
-    this.el.addEventListener('pointerdown', this.onPointerDown);
+    this.callbacks = callbacks;
+    callbacks.listen(this.el, 'pointerdown', this.onPointerDown);
   }
 
   onPointerDown(ev) {
@@ -32,8 +33,8 @@ export default class AngleSlider extends EventTarget {
       x0: ev.clientX, y0: ev.clientY,
       angle0: this.angle,
     }
-    document.addEventListener('pointermove', this.onPointerMove);
-    document.addEventListener('pointerup', this.onPointerUp);
+    this.callbacks.listen(document, 'pointermove', this.onPointerMove);
+    this.callbacks.listen(document, 'pointerup', this.onPointerUp);
   }
 
   onPointerMove(ev) {
@@ -48,8 +49,8 @@ export default class AngleSlider extends EventTarget {
 
   onPointerUp(ev) {
     this.drag = false;
-    document.removeEventListener('pointermove', this.onPointerMove);
-    document.removeEventListener('pointerup', this.onPointerUp);
+    this.callbacks.unlisten(document, 'pointermove', this.onPointerMove);
+    this.callbacks.unlisten(document, 'pointerup', this.onPointerUp);
 
     if (Math.abs(this.angle) < 1) {
       // TODO: animate towards 0

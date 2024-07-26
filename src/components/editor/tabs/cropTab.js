@@ -32,7 +32,7 @@ export default class CropTab extends Tab {
       if (this.controller.cropAspect == value) {
         el.classList.add('is-active');
       }
-      el.addEventListener('click', () => {
+      opts.callbacks.listen(el, 'click', () => {
         this.controller.setCropAspect(value);
         for (const item of this.items) {
           item.el.classList.toggle('is-active', item.value == value);

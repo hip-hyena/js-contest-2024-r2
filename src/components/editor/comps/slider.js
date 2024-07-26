@@ -1,7 +1,7 @@
 import { makeEl } from '../utils.js';
 
 export default class Slider {
-  constructor({ parent, label, value, min, max, isCentered, isExponential, noInitial }) {
+  constructor({ parent, label, value, min, max, isCentered, isExponential, noInitial, callbacks }) {
     this.el = makeEl('div', 'a-slider' + (isCentered ? ' is-centered' : ''), { parent });
     this.labelEl = makeEl('div', 'a-slider__label', { parent: this.el, text: label });
     this.valueEl = makeEl('div', 'a-slider__value', { parent: this.el });
@@ -10,7 +10,7 @@ export default class Slider {
     this.isExponential = isExponential;
     this.inputEl.min = min === undefined ? (isCentered ? -100 : 0) : min;
     this.inputEl.max = max === undefined ? 100 : max;
-    this.inputEl.addEventListener('input', () => {
+    callbacks.listen(this.inputEl, 'input', () => {
       this.setValue(this.inputEl.value);
     });
     this.initialValue = noInitial ? null : value;

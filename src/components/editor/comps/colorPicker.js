@@ -1,15 +1,16 @@
 import { getContrastColor, hexToRgb, hsvToRgb, makeEl, rgbToHex, rgbToHsv } from '../utils.js';
 
 export default class ColorPicker extends EventTarget {
-  constructor({ parent }) {
+  constructor({ parent, callbacks }) {
     super();
+    this.callbacks = callbacks;
     this.el = makeEl('div', 'a-color-picker', { parent });
 
     this.paletteEl = makeEl('div', 'a-color-picker__palette', { parent: this.el });
     this.colors = ['#FFFFFF', '#FE4438', '#FF8901', '#FFD60A', '#33C759', '#62E5E0', '#0A84FF', '#BD5CF3'].map((color, index) => {
       const el = makeEl('div', 'a-color-picker__color', { parent: this.paletteEl });
       el.style.setProperty('--color', color);
-      el.addEventListener('click', () => {
+      callbacks.listen(el, 'click', () => {
         this.selectColor(color);
       });
       return { color, el }
@@ -20,7 +21,7 @@ export default class ColorPicker extends EventTarget {
     this.hueInput.type = 'range';
     this.hueInput.min = 0;
     this.hueInput.max = 360;
-    this.hueInput.addEventListener('input', () => {
+    callbacks.listen(this.hueInput, 'input', () => {
       const hsv = rgbToHsv(hexToRgb(this.color));
       this.selectColor(rgbToHex(hsvToRgb([this.hueInput.value / 360, hsv[1], hsv[2]])), { keepHue: true });
     });
@@ -32,7 +33,7 @@ export default class ColorPicker extends EventTarget {
     this.hexEl = makeEl('div', ['a-color-picker__hex', 'a-text-input'], { parent: this.detailsEl });
     this.hexLabelEl = makeEl('div', 'a-text-input__label', { parent: this.hexEl, text: 'HEX' });
     this.hexInputEl = makeEl('input', 'a-text-input__input', { parent: this.hexEl });
-    this.hexInputEl.addEventListener('input', () => {
+    callbacks.listen(this.hexInputEl, 'input', () => {
       if (this.hexInputEl.value.match(/^#[0-9A-Fa-f]{6}$/)) {
         this.selectColor(this.hexInputEl.value);
       }
@@ -41,14 +42,14 @@ export default class ColorPicker extends EventTarget {
     this.rgbEl = makeEl('div', ['a-color-picker__rgb', 'a-text-input'], { parent: this.detailsEl });
     this.rgbLabelEl = makeEl('div', 'a-text-input__label', { parent: this.rgbEl, text: 'RGB' });
     this.rgbInputEl = makeEl('input', 'a-text-input__input', { parent: this.rgbEl });
-    this.rgbInputEl.addEventListener('input', () => {
+    callbacks.listen(this.rgbInputEl, 'input', () => {
       if (this.rgbInputEl.value.match(/^\s*\d+\s*,\s*\d+\s*,\s*\d+\s*$/)) {
         const rgb = this.rgbInputEl.value.split(',').map(v => v.trim());
         this.selectColor(rgbToHex(rgb));
       }
     });
 
-    this.customEl.addEventListener('click', () => {
+    callbacks.listen(this.customEl, 'click', () => {
       this.customEl.classList.toggle('is-active');
       this.hueInput.classList.toggle('is-hidden');
       this.detailsEl.classList.toggle('is-hidden');
@@ -60,7 +61,7 @@ export default class ColorPicker extends EventTarget {
     this.onPointerDown = this.onPointerDown.bind(this);
     this.onPointerUp = this.onPointerUp.bind(this);
     this.onPointerMove = this.onPointerMove.bind(this);
-    this.colorThumbEl.addEventListener('pointerdown', this.onPointerDown);
+    callbacks.listen(this.colorThumbEl, 'pointerdown', this.onPointerDown);
 
     this.selectColor('#FFFFFF');
   }
@@ -69,8 +70,9 @@ export default class ColorPicker extends EventTarget {
     this.drag = {
       x0: ev.clientX, y0: ev.clientY,
     }
-    document.addEventListener('pointermove', this.onPointerMove);
-    document.addEventListener('pointerup', this.onPointerUp);
+
+    this.callbacks.listen(document, 'pointermove', this.onPointerMove);
+    this.callbacks.listen(document, 'pointerup', this.onPointerUp);
   }
 
   onPointerMove(ev) {
@@ -91,8 +93,8 @@ export default class ColorPicker extends EventTarget {
 
   onPointerUp(ev) {
     this.drag = false;
-    document.removeEventListener('pointermove', this.onPointerMove);
-    document.removeEventListener('pointerup', this.onPointerUp);
+    this.callbacks.unlisten(document, 'pointermove', this.onPointerMove);
+    this.callbacks.unlisten(document, 'pointerup', this.onPointerUp);
   }
 
   selectColor(newColor, { keepHue } = {}) {

@@ -222,3 +222,52 @@ export function distance(p1, p2) {
   const dy = p2[1] - p1[1];
   return Math.sqrt(dx * dx + dy * dy);
 }
+
+export class CallbackManager { // Yet another velosiped
+  constructor() {
+    this.eventListeners = [];
+    this.timeouts = [];
+    this.intervals = [];
+  }
+  listen(target, event, callback, opts) {
+    target.addEventListener(event, callback, opts);
+    this.eventListeners.push([target, event, callback, opts]);
+  }
+  timeout(callback, delay) {
+    const id = window.setTimeout(callback, delay);
+    this.timeouts.push(id);
+    return id;
+  }
+  interval(callback, delay) {
+    const id = window.setInterval(callback, delay);
+    this.intervals.push(id);
+    return id;
+  }
+  unlisten(target, event, callback, opts) {
+    target.removeEventListener(event, callback, opts);
+    this.eventListeners = this.eventListeners.filter(([_target, _event, _callback, _opts]) =>
+      _target !== target || _event !== event || _callback !== callback || _opts !== opts);
+  }
+  clearTimeout(id) {
+    window.clearTimeout(id);
+    this.timeouts = this.timeouts.filter(_id => _id != id);
+  }
+  clearInterval(id) {
+    window.clearInterval(id);
+    this.intervals = this.intervals.filter(_id => _id != id);
+  }
+  destroy() {
+    for (const [target, event, callback, opts] of this.eventListeners) {
+      target.removeEventListener(event, callback, opts);
+    }
+    for (const id of this.timeouts) {
+      clearTimeout(id);
+    }
+    for (const id of this.intervals) {
+      clearInterval(id);
+    }
+    this.eventListeners = [];
+    this.timeouts = [];
+    this.intervals = [];
+  }
+}

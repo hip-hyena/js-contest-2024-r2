@@ -11,7 +11,7 @@ export default class DrawTab extends Tab {
     this.tabEl = Button({ icon: 'draw' });
     this.el = makeEl('div', ['a-tab', 'is-draw'], { parent: opts.parent });
 
-    this.colorPicker = new ColorPicker({ parent: this.el });
+    this.colorPicker = new ColorPicker({ parent: this.el, callbacks: opts.callbacks });
     this.colorPicker.selectColor('#FE4438');
     this.colorPicker.addEventListener('color', () => {
       this.sizeSlider.el.style.setProperty('--color', this.colorPicker.color);
@@ -22,7 +22,7 @@ export default class DrawTab extends Tab {
       }
       this.controller.setDrawColor(this.colorPicker.color);
     });
-    this.sizeSlider = new Slider({ parent: this.el, label: 'Size', min: 5, max: 50, value: 15, noInitial: true });
+    this.sizeSlider = new Slider({ parent: this.el, label: 'Size', min: 5, max: 50, value: 15, noInitial: true, callbacks: opts.callbacks });
     this.sizeSlider.inputEl.addEventListener('input', () => {
       this.controller.drawSize = this.sizeSlider.inputEl.value;
     });
@@ -36,7 +36,7 @@ export default class DrawTab extends Tab {
       if (key in this.controller.drawColor) {
         el.style.setProperty('--color', this.controller.drawColor[key]);
       }
-      el.addEventListener('click', this.selectTool.bind(this, key));
+      opts.callbacks.listen(el, 'click', this.selectTool.bind(this, key));
       return { key, el };
     });
     this.selectTool('pen');

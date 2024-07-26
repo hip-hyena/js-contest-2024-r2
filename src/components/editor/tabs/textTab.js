@@ -9,10 +9,10 @@ export default class TextTab extends Tab {
   constructor(opts) {
     super(opts);
     this.tabEl = Button({ icon: 'text' });
-    this.el = makeEl('div', ['a-tab', 'is-text'], { parent: opts.parent });
+    this.el = makeEl('div', ['a-tab', 'is-text'], { parent: opts.parent, callbacks: opts.callbacks });
 
-    this.colorPicker = new ColorPicker({ parent: this.el });
-    this.colorPicker.addEventListener('color', () => {
+    this.colorPicker = new ColorPicker({ parent: this.el, callbacks: opts.callbacks });
+    opts.callbacks.listen(this.colorPicker, 'color', () => {
       this.sizeSlider.el.style.setProperty('--color', this.colorPicker.color);
       this.controller.setTextColor(this.colorPicker.color);
     });
@@ -22,7 +22,7 @@ export default class TextTab extends Tab {
     this.centerBtn = Button({ parent: this.buttonsEl, icon: 'align_center', classList: ['is-active'] });
     this.rightBtn = Button({ parent: this.buttonsEl, icon: 'align_right' });
     [[this.leftBtn, 'left'], [this.centerBtn, 'center'], [this.rightBtn, 'right']].forEach(([btn, key]) => {
-      btn.addEventListener('click', () => {
+      opts.callbacks.listen(btn, 'click', () => {
         for (const el of [this.leftBtn, this.centerBtn, this.rightBtn]) {
           el.classList.toggle('is-active', el === btn);
         }
@@ -34,7 +34,7 @@ export default class TextTab extends Tab {
     this.styleStroke = Button({ parent: this.buttonsEl, icon: 'text_stroke' });
     this.styleFill = Button({ parent: this.buttonsEl, icon: 'text_fill' });
     [[this.styleNone, 'none'], [this.styleStroke, 'stroke'], [this.styleFill, 'fill']].forEach(([btn, key]) => {
-      btn.addEventListener('click', () => {
+      opts.callbacks.listen(btn, 'click', () => {
         for (const el of [this.styleNone, this.styleStroke, this.styleFill]) {
           el.classList.toggle('is-active', el === btn);
         }
@@ -42,8 +42,8 @@ export default class TextTab extends Tab {
       });
     });
 
-    this.sizeSlider = new Slider({ parent: this.el, label: 'Size', min: 248, max: 548, value: 317, isExponential: true, noInitial: true });
-    this.sizeSlider.inputEl.addEventListener('input', () => {
+    this.sizeSlider = new Slider({ parent: this.el, label: 'Size', min: 248, max: 548, value: 317, isExponential: true, noInitial: true, callbacks: opts.callbacks });
+    opts.callbacks.listen(this.sizeSlider.inputEl, 'input', () => {
       this.controller.setTextSize(this.sizeSlider.getActualValue());
     });
     this.sizeSlider.el.style.setProperty('--color', this.colorPicker.color);
@@ -55,12 +55,12 @@ export default class TextTab extends Tab {
         const el = ListItem({ parent: this.el, text: fontName });
         el.style.fontFamily = fontName;
         el.style.fontWeight = fontName == 'Courier New' ? 'bold' : 500;
-        el.addEventListener('click', this.selectFont.bind(this, fontName));
+        opts.callbacks.listen(el, 'click', this.selectFont.bind(this, fontName));
         return { key: fontName, el };
       });
     this.selectFont('Roboto');
 
-    this.controller.addEventListener('textselect', () => {
+    opts.callbacks.listen(this.controller, 'textselect', () => {
       for (const [el, style] of [[this.styleNone, 'none'], [this.styleStroke, 'stroke'], [this.styleFill, 'fill']]) {
         el.classList.toggle('is-active', style == this.controller.textOverlay.style);
       }

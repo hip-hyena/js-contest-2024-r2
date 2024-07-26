@@ -27,21 +27,22 @@ export default class SlidersTab extends Tab {
         parent: this.el,
         value: 0,
         isCentered,
-        label: key[0].toUpperCase() + key.substring(1)
+        label: key[0].toUpperCase() + key.substring(1),
+        callbacks: opts.callbacks,
       });
 
       ((key) => {
         let isChangedWithPointer = false;
-        this.sliders[key].inputEl.addEventListener('input', () => {
+        opts.callbacks.listen(this.sliders[key].inputEl, 'input', () => {
           this.controller.change({ [key]: this.sliders[key].inputEl.value / 100 });
           if (!isChangedWithPointer) {
             this.controller.commitDebounced();
           }
         });
-        this.sliders[key].inputEl.addEventListener('pointerdown', () => {
+        opts.callbacks.listen(this.sliders[key].inputEl, 'pointerdown', () => {
           isChangedWithPointer = true;
         });
-        this.sliders[key].inputEl.addEventListener('pointerup', () => {
+        opts.callbacks.listen(this.sliders[key].inputEl, 'pointerup', () => {
           if (isChangedWithPointer) {
             this.controller.commit();
           }
@@ -49,7 +50,7 @@ export default class SlidersTab extends Tab {
       })(key);
     }
 
-    this.controller.addEventListener('change', () => {
+    opts.callbacks.listen(this.controller, 'change', () => {
       for (const key in this.sliders) {
         this.sliders[key].setValue((this.controller.state.adjustments[key] || 0) * 100);
       }

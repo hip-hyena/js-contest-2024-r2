@@ -4,23 +4,19 @@ import CropTab from './tabs/cropTab.js';
 import TextTab from './tabs/textTab.js';
 import DrawTab from './tabs/drawTab.js';
 import StickersTab from './tabs/stickersTab.js';
-import { makeEl } from './utils.js';
+import { CallbackManager, makeEl } from './utils.js';
 import AngleSlider from './comps/angleSlider.js';
 import ImageController from './imageController.js';
 
 export default class ImageEditor extends EventTarget {
   constructor({ parent, image, managers }) {
     super();
+    this.callbacks = new CallbackManager();
     this.el = makeEl('div', 'a-image-editor', { parent });
     this.mainEl = makeEl('div', 'a-image-editor__main', { parent: this.el });
     this.sideEl = makeEl('div', 'a-image-editor__side', { parent: this.el });
     this.confirmBtn = Button({ parent: this.el, classList: ['is-fab'], icon: 'check' });
-    this.confirmBtn.addEventListener('click', () => {
-      this.dismiss();
-      const ev = new Event('confirm');
-      ev.image = this.controller.renderFinalImage();
-      this.dispatchEvent(ev);
-    });
+    this.callbacks.listen(this.confirmBtn, 'click', this.confirm.bind(this));
 
     this.imageEl = makeEl('div', 'a-image-editor__image', { parent: this.mainEl });
     this.cropPanelEl = makeEl('div', ['a-image-editor__crop-panel', 'is-hidden'], { parent: this.mainEl });
@@ -29,52 +25,52 @@ export default class ImageEditor extends EventTarget {
     this.sideTabsEl = makeEl('div', ['a-image-editor__side-tabs', 'a-tabs'], { parent: this.sideEl });
     this.sideTabBodyEl = makeEl('div', 'a-image-editor__side-tab-body', { parent: this.sideEl });
     
-    this.controller = new ImageController({ el: this.imageEl, managers });
+    this.controller = new ImageController({ el: this.imageEl, managers, callbacks: this.callbacks });
 
     this.rotateBtn = Button({ parent: this.cropPanelEl, icon: 'rotate' });
-    this.rotateBtn.addEventListener('click', () => {
+    this.callbacks.listen(this.rotateBtn, 'click', () => {
       this.controller.setCropRotation(this.controller.state.rotation + 90);
     });
-    this.cropAngleEl = new AngleSlider({ parent: this.cropPanelEl });
-    this.cropAngleEl.addEventListener('change', () => {
+    this.cropAngleEl = new AngleSlider({ parent: this.cropPanelEl, callbacks: this.callbacks });
+    this.callbacks.listen(this.cropAngleEl, 'change', () => {
       this.controller.setCropAngle(this.cropAngleEl.angle);
     });
     this.flipBtn = Button({ parent: this.cropPanelEl, icon: 'flip' });
-    this.flipBtn.addEventListener('click', () => {
+    this.callbacks.listen(this.flipBtn, 'click', () => {
       this.controller.setCropFlip(!this.controller.state.flip);
     });
 
     this.closeBtn = Button({ parent: this.sideHeadEl, icon: 'close' });
-    this.closeBtn.addEventListener('click', () => {
+    this.callbacks.listen(this.closeBtn, 'click', () => {
       this.dismiss();
       this.dispatchEvent(new Event('cancel'));
     });
     this.sideTitleEl = makeEl('div', 'a-image-editor__side-title', { parent: this.sideHeadEl, text: 'Edit' });
     this.undoBtn = Button({ parent: this.sideHeadEl, icon: 'undo', classList: ['is-disabled'] });
-    this.undoBtn.addEventListener('click', () => {
+    this.callbacks.listen(this.undoBtn, 'click', () => {
       this.controller.undo();
     });
     this.redoBtn = Button({ parent: this.sideHeadEl, icon: 'redo', classList: ['is-disabled'] });
-    this.redoBtn.addEventListener('click', () => {
+    this.callbacks.listen(this.redoBtn, 'click', () => {
       this.controller.redo();
     });
-    this.controller.addEventListener('undostate', () => {
+    this.callbacks.listen(this.controller, 'undostate', () => {
       this.undoBtn.classList.toggle('is-disabled', !this.controller.isUndoAvailable());
       this.redoBtn.classList.toggle('is-disabled', !this.controller.isRedoAvailable());
     });
 
     this.tabs = [
-      new SlidersTab({ parent: this.sideTabBodyEl, controller: this.controller }),
-      new CropTab({ parent: this.sideTabBodyEl, controller: this.controller }),
-      new TextTab({ parent: this.sideTabBodyEl, controller: this.controller }),
-      new DrawTab({ parent: this.sideTabBodyEl, controller: this.controller }),
-      new StickersTab({ parent: this.sideTabBodyEl, controller: this.controller, managers }),
+      new SlidersTab({ parent: this.sideTabBodyEl, controller: this.controller, callbacks: this.callbacks }),
+      new CropTab({ parent: this.sideTabBodyEl, controller: this.controller, callbacks: this.callbacks }),
+      new TextTab({ parent: this.sideTabBodyEl, controller: this.controller, callbacks: this.callbacks }),
+      new DrawTab({ parent: this.sideTabBodyEl, controller: this.controller, callbacks: this.callbacks }),
+      new StickersTab({ parent: this.sideTabBodyEl, controller: this.controller, managers, callbacks: this.callbacks }),
     ];
     this.sideTabsEl.append(...this.tabs.map(tab => tab.tabEl));
     this.selectedTab = null;
     this.selectTab(0);
     this.tabs.forEach((tab, index) => {
-      tab.tabEl.addEventListener('click', () => {
+      this.callbacks.listen(tab.tabEl, 'click', () => {
         this.selectTab(index);
       });
     });
@@ -83,7 +79,16 @@ export default class ImageEditor extends EventTarget {
   }
 
   dismiss() { // TODO: animate & remove listeners
+    this.controller.destroy();
+    this.callbacks.destroy();
     this.el.remove();
+  }
+
+  confirm() {
+    const ev = new Event('confirm');
+    ev.image = this.controller.renderFinalImage();
+    this.dismiss();
+    this.dispatchEvent(ev);
   }
 
   selectTab(newIndex) {
