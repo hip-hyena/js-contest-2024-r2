@@ -26,6 +26,9 @@ export default class StickersTab extends Tab {
     this.el.append(this.pane.container);
   }
 
+  destroy() {
+    this.pane.destroy();
+  }
   opened() {
     //animationIntersector.unlockIntersectionGroup(EMOTICONSEDITORGROUP);
     this.pane.emoticonsDropdown.lazyLoadQueue.unlockAndRefresh();

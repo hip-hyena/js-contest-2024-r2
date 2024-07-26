@@ -83,6 +83,9 @@ export default class ImageEditor extends EventTarget {
   dismiss() { // TODO: animate & remove listeners
     this.controller.destroy();
     this.callbacks.destroy();
+    for (const tab of this.tabs) {
+      tab.destroy();
+    }
     this.el.remove();
   }
 
