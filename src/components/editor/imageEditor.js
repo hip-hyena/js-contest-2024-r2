@@ -98,7 +98,7 @@ export default class ImageEditor extends EventTarget {
     const parentRect = this.sideTabsEl.getBoundingClientRect();
     const rect = this.tabs[newIndex].tabEl.getBoundingClientRect();
     this.sideTabsEl.style.setProperty('--highlight-left', rect.left - parentRect.left + 12);
-    this.tabs[newIndex].el.scrollIntoView(/*{ behavior: 'smooth' }*/);
+    this.tabs[newIndex].el.scrollIntoView({ inline: 'start' });
     this.tabs.forEach((tab, index) => {
       tab.tabEl.classList.toggle('is-active', index == newIndex);
     });

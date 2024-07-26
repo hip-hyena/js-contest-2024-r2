@@ -670,6 +670,14 @@ export default class ImageController extends EventTarget {
       ];
     }
 
+    const resetContext = (ctx) => {
+      if (ctx.reset) {
+        ctx.reset();
+        return;
+      }
+      ctx.resetTransform();
+      ctx.clearRect(0, 0, this.viewWidth, this.viewHeight);
+    }
     const initContext = (ctx) => {
       //ctx.clearRect(0, 0, this.viewWidth, this.viewHeight);
       ctx.save();
@@ -728,7 +736,7 @@ export default class ImageController extends EventTarget {
       }
     }*/
 
-    ctx.reset();
+    resetContext(ctx);
     initContext(ctx);
     
     // Snapping guidelines
@@ -900,7 +908,7 @@ export default class ImageController extends EventTarget {
         let ctx = targetCtx || this.ctx;
         if (overlay.type == 'blur') {
           ctx = this.blurCtx;
-          ctx.reset();
+          resetContext(ctx);
           initContext(ctx);
           // Transfer currently drawn image to the blur canvas
           ctx.filter = `blur(${overlay.size}px)`;
