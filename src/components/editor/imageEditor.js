@@ -9,7 +9,7 @@ import AngleSlider from './comps/angleSlider.js';
 import ImageController from './imageController.js';
 
 export default class ImageEditor extends EventTarget {
-  constructor({ parent, image, managers }) {
+  constructor({ parent, image, managers, changes }) {
     super();
     this.callbacks = new CallbackManager();
     this.el = makeEl('div', 'a-image-editor', { parent });
@@ -25,7 +25,7 @@ export default class ImageEditor extends EventTarget {
     this.sideTabsEl = makeEl('div', ['a-image-editor__side-tabs', 'a-tabs'], { parent: this.sideEl });
     this.sideTabBodyEl = makeEl('div', 'a-image-editor__side-tab-body', { parent: this.sideEl });
     
-    this.controller = new ImageController({ el: this.imageEl, managers, callbacks: this.callbacks });
+    this.controller = new ImageController({ el: this.imageEl, managers, callbacks: this.callbacks, saved: changes });
 
     this.rotateBtn = Button({ parent: this.cropPanelEl, icon: 'rotate' });
     this.callbacks.listen(this.rotateBtn, 'click', () => {
@@ -76,6 +76,8 @@ export default class ImageEditor extends EventTarget {
     });
 
     image && this.controller.loadImage(image);
+    this.undoBtn.classList.toggle('is-disabled', !this.controller.isUndoAvailable());
+    this.redoBtn.classList.toggle('is-disabled', !this.controller.isRedoAvailable());
   }
 
   dismiss() { // TODO: animate & remove listeners
@@ -87,6 +89,7 @@ export default class ImageEditor extends EventTarget {
   confirm() {
     const ev = new Event('confirm');
     ev.image = this.controller.renderFinalImage();
+    ev.changes = this.controller.saveState();
     this.dismiss();
     this.dispatchEvent(ev);
   }

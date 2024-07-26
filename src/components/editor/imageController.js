@@ -13,7 +13,7 @@ function waitForImage(img) {
   });
 }
 export default class ImageController extends EventTarget {
-  constructor({ el, managers, callbacks }) {
+  constructor({ el, managers, callbacks, saved }) {
     super();
     this.el = el;
     this.managers = managers;
@@ -53,16 +53,16 @@ export default class ImageController extends EventTarget {
     callbacks.listen(this.textareaEl, 'input', this.onTextareaInput);
     this.drag = false;
 
-    this.state = {
+    this.state = saved?.state || {
       adjustments: {},
       rotation: 0,
       angle: 0,
       flip: 0,
       crop: [0, 0, 0, 0],
     };
-    this.overlays = []; // Part of state, but stored separately
-    this.history = [[0, JSON.stringify(this.state)]]; // History of all committed changes
-    this.undoStep = 0;
+    this.overlays = saved?.overlays || []; // Part of state, but stored separately
+    this.history = saved?.history || [[0, JSON.stringify(this.state)]]; // History of all committed changes
+    this.undoStep = saved?.undoStep || 0;
 
     this.mode = 'adjust';
 
@@ -99,6 +99,15 @@ export default class ImageController extends EventTarget {
         this.commit(arg);
       }, 1000);
     };
+  }
+
+  saveState() {
+    return {
+      state: this.state,
+      overlays: this.overlays,
+      history: this.history,
+      undoStep: this.undoStep,
+    }
   }
 
   destroy() {

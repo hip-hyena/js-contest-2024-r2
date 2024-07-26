@@ -70,6 +70,7 @@ type SendFileParams = SendFileDetails & {
   // strippedBytes?: PhotoSize.photoStrippedSize['bytes']
 
   original?: string,
+  changes?: any,
   spoilerBtnOn?: HTMLElement,
   spoilerBtnOff?: HTMLElement,
 };
@@ -922,13 +923,15 @@ export default class PopupNewMedia extends PopupElement {
           const editor = new ImageEditor({
             parent: document.body,
             image,
-            managers: this.managers
+            managers: this.managers,
+            changes: params.changes || null
           });
           editor.addEventListener('confirm', (ev: any) => {
             params.objectURL = ev.image.url;
             params.scaledBlob = null;
             params.width = ev.image.size.width;
             params.height = ev.image.size.height;
+            params.changes = ev.changes;
             renderImageFromUrlPromise(img, ev.image.url);
           });
         }
