@@ -182,9 +182,22 @@ export class AppSidebarLeft extends SidebarSlider {
       accBtnById[account.uniqId] = btn;
       return btn;
     });
-    getPeerTitle({peerId: rootScope.myId, plainText: true}).then(name => {
-      appAccountManager.update({name});
-      accBtnById[appAccountManager.current].regularText = name;
+    this.managers.appPeersManager.getPeerPhoto(rootScope.myId).then(async photo => {
+      const url = await apiManagerProxy.loadAvatar(rootScope.myId, photo, 'photo_small');
+      const xhr = new XMLHttpRequest();
+      xhr.responseType = 'arraybuffer';
+      xhr.onload = async() => {
+        const photo = btoa(
+          new Uint8Array(xhr.response).reduce((data, byte) => data + String.fromCharCode(byte), '')
+        );
+        const name = await getPeerTitle({peerId: rootScope.myId, plainText: true});
+        const acc = {name, photo};
+        appAccountManager.update(acc);
+        accBtnById[appAccountManager.current].regularText = name;
+        console.log('[!!] upd account: ', acc);
+      };
+      xhr.open('GET', url);
+      xhr.send();
     });
 
     const menuButtons: (ButtonMenuItemOptions & {verify?: () => boolean | Promise<boolean>})[] = [...accountButtons, {
@@ -378,6 +391,15 @@ export class AppSidebarLeft extends SidebarSlider {
         if(a) a.textContent = 'A';
 
         btnArchive.element?.append(this.archivedCount);
+
+        console.log(`[!!] accBtnById: `, accBtnById);
+        for(const id in accBtnById) {
+          const acc = appAccountManager.accounts.find((acc: any) => acc.uniqId == id);
+          if(!accBtnById[id].element || !acc || !acc.photo) continue;
+          const iconEl = accBtnById[id].element.querySelector('.btn-menu-item-icon');
+          if(!iconEl) continue;
+          iconEl.innerHTML = `<img class="btn-menu-item-photo" src="data:image/jpeg;base64,${acc.photo}"/>`;
+        }
       },
       noIcon: true
     });
