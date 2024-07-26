@@ -58,6 +58,7 @@ import PopupMakePaid from './makePaid';
 import paymentsWrapCurrencyAmount from '../../helpers/paymentsWrapCurrencyAmount';
 import Button from '../editor/comps/button';
 import ImageEditor from '../editor/imageEditor';
+import Icon from '../icon';
 
 type SendFileParams = SendFileDetails & {
   file?: File,
@@ -910,10 +911,10 @@ export default class PopupNewMedia extends PopupElement {
 
     const buttonsEl = document.createElement('div');
     buttonsEl.className = 'a-media-attach-buttons';
-    if (!isVideo) {
-      const editBtn = Button({ parent: buttonsEl, icon: 'sliders' } as any);
-      editBtn.addEventListener('click', async () => {
-        if (!params.original) {
+    if(!isVideo) {
+      const editBtn = Button({parent: buttonsEl, icon: 'sliders'} as any);
+      editBtn.addEventListener('click', async() => {
+        if(!params.original) {
           params.original = url;
         }
         const image = new Image();
@@ -934,18 +935,20 @@ export default class PopupNewMedia extends PopupElement {
         image.src = params.original;
       });
     }
-    const spoilerBtnOn = Button({ parent: buttonsEl, icon: 'spoiler' } as any);
+    const spoilerBtnOn = Button({parent: buttonsEl, icon: 'spoiler'} as any);
     spoilerBtnOn.addEventListener('click', () => {
       this.applyMediaSpoiler(params);
     });
-    const spoilerBtnOff = Button({ parent: buttonsEl, icon: 'spoileroff', classList: ['is-hidden'] } as any);
+    const spoilerBtnOff = Button({parent: buttonsEl, icon: 'spoileroff', classList: ['is-hidden']} as any);
+    spoilerBtnOff.firstChild.replaceWith(Icon('mediaspoileroff'));
+    spoilerBtnOff.firstChild.style.fontSize = '20px';
     spoilerBtnOff.addEventListener('click', () => {
       this.removeMediaSpoiler(params);
     });
-    const binBtn = Button({ parent: buttonsEl, icon: 'bin' } as any);
+    const binBtn = Button({parent: buttonsEl, icon: 'bin'} as any);
     binBtn.addEventListener('click', () => {
       this.files = this.files.filter(file => params.file !== file);
-      if (this.files.length) {
+      if(this.files.length) {
         this.attachFiles();
       } else {
         this.hide();
