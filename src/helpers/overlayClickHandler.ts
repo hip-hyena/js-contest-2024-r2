@@ -50,6 +50,8 @@ export default class OverlayClickHandler extends EventListenerBase<{
     if(this.element) {
       if(!this.element.classList.contains('is-submenu')) {
         this.overlay?.remove();
+      } else {
+        document.body.classList.remove('is-submenu-open');
       }
       this.element = undefined;
       this.dispatchEvent('toggle', false);

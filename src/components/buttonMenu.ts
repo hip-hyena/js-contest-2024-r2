@@ -182,6 +182,7 @@ function ButtonMenuItem(options: ButtonMenuItemOptions) {
       const opts: any = el as any;
       if(opts.submenuEl) {
         opts.submenuEl.classList.remove('active');
+        document.body.classList.remove('is-submenu-open');
         (window as any).disableMenuClosing = false;
       }
     });

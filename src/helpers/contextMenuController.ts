@@ -63,8 +63,6 @@ class ContextMenuController extends OverlayClickHandler {
             child.classList.remove('active');
           }
         }
-      } else {
-        document.body.classList.remove('is-submenu-open');
       }
 
       if(this.element.classList.contains('night')) {
