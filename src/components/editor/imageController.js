@@ -5,7 +5,7 @@ import createMiddleware from '../../helpers/solid/createMiddleware.ts';
 
 function waitForImage(img) {
   return new Promise((resolve) => {
-    if (img.tagName == 'IMG') {
+    if ((img.tagName == 'IMG' || img.tagName == 'VIDEO') && !img.complete) {
       img.onload = resolve;
     } else {
       resolve();
@@ -251,15 +251,20 @@ export default class ImageController extends EventTarget {
       div,
       middleware: createMiddleware().get(),
       loadPromises,
-      width: 256,
-      height: 256
+      // onlyThumb: true,
+      syncedVideo: true,
+      // fullThumb: 'photo_big',
+      width: 512,
+      height: 512
     });
     await Promise.all(loadPromises);
-    return div.firstChild;
+    console.log('loaded div: ', div);
+    return div.querySelector('video') || div.querySelector('img');
   }
 
   async addSticker(docId) {
     const image = await this.loadSticker(docId);
+    if (!image) return;
     await waitForImage(image);
     const width = image.width || image.naturalWidth;
     const height = image.height || image.naturalHeight;
