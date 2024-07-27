@@ -1,5 +1,6 @@
 import { IS_WORKER } from '../../helpers/context.ts';
 import toggleStorages from '../../helpers/toggleStorages.ts';
+import rootScope from '../rootScope.ts';
 
 class SimpleStorage {
   constructor(name) {
@@ -80,6 +81,16 @@ export class AppAccountManager {
     this.current = localStorage['tweb_current'] || '';
     this.previous = localStorage['tweb_previous'] || '';
     this.inited = true;
+
+    rootScope.addEventListener('user_auth', ({ id }) => {
+      for (const acc of this.accounts) {
+        if (acc.uniqId != this.current && acc.id == id) {
+          this.undo(acc.uniqId);
+          return;
+        }
+      }
+      this.update({ id });
+    });
   }
 
   async dbSuffix() {
