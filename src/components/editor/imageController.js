@@ -12,6 +12,11 @@ function waitForImage(img) {
     }
   });
 }
+function distToOverlay(pt, overlay) {
+  const dx = pt[0] - overlay.center[0];
+  const dy = pt[1] - overlay.center[1];
+  return Math.sqrt(dx * dx + dy * dy);
+}
 export default class ImageController extends EventTarget {
   constructor({ el, managers, callbacks, saved }) {
     super();
@@ -282,7 +287,8 @@ export default class ImageController extends EventTarget {
 
   onPointerDown(ev) {
     this.overlayDragged = false;
-    const hit = this.hitTest(...this.clientToImage(ev.clientX, ev.clientY));
+    const pos = this.clientToImage(ev.clientX, ev.clientY);
+    const hit = this.hitTest(...pos);
     this.drag = {
       hit,
       crop0: this.state.crop.slice(0),
@@ -295,7 +301,7 @@ export default class ImageController extends EventTarget {
       this.drawOverlay = {
         type: this.drawTool,
         size: this.drawSize,
-        points: [this.clientToImage(ev.clientX, ev.clientY)],
+        points: [pos],
         bezier: null,
       }
       if (this.drawColor[this.drawTool]) {
@@ -313,6 +319,8 @@ export default class ImageController extends EventTarget {
     }
     if (hit && hit.type == 'corner') {
       this.drag.angle0 = hit.overlay.angle;
+      this.drag.scale0 = hit.overlay.scale;
+      this.drag.dist0 = distToOverlay(pos, hit.overlay);
     }
     if (hit && (hit.type == 'corner' || hit.type == 'select')) {
       const { image, ...props } = hit.overlay;
@@ -330,7 +338,7 @@ export default class ImageController extends EventTarget {
       this.textareaEl.className = `a-image-editor__textarea is-${textOverlay.align}-aligned`;
       this.textareaEl.style.left = center[0] + 'px';
       this.textareaEl.style.top = center[1] + 'px';
-      this.textareaEl.style.transform = `translate(-50%, -50%) rotate(${textOverlay.angle * 180 / Math.PI}deg)`;
+      this.textareaEl.style.transform = `translate(-50%, -50%) scale(${textOverlay.scale}) rotate(${textOverlay.angle * 180 / Math.PI}deg)`;
       this.textareaEl.style.fontFamily = textOverlay.font;
       this.textareaEl.style.fontSize = this.imageSizeToClient(textOverlay.size) + 'px';
       this.textareaEl.style.caretColor = textOverlay.style == 'fill' ? getContrastColor(textOverlay.color) : textOverlay.color;
@@ -507,7 +515,9 @@ export default class ImageController extends EventTarget {
         const overlay = this.drag.hit.overlay;
         const angle0 = Math.atan2(pos0[0] - overlay.center[0], pos0[1] - overlay.center[1]);
         const angle = Math.atan2(pos[0] - overlay.center[0], pos[1] - overlay.center[1]);
+        const dist = distToOverlay(pos, overlay);
         overlay.angle = this.drag.angle0 - (angle - angle0);
+        overlay.scale = Math.max(0.1, dist * this.drag.scale0 / this.drag.dist0);
         this.updateTextarea();
         this.overlayDragged = true;
       } else
@@ -522,7 +532,7 @@ export default class ImageController extends EventTarget {
         }
         overlay.center[1] = this.drag.center0[1] + dy;
         
-        const offsy = overlay.type == 'text' ? overlay.size * 0.3 : 0;
+        const offsy = overlay.type == 'text' ? overlay.size * 0.1 : 0;
         const midy = this.imageHeight / 2 + (this.state.crop[1] - this.state.crop[3]) / 2;
         if (Math.abs(overlay.center[1] - offsy - midy) < minSnapDist) {
           overlay.center[1] = midy + offsy;
@@ -579,7 +589,7 @@ export default class ImageController extends EventTarget {
       if (overlay.type != 'text' && overlay.type != 'sticker') {
         continue;
       }
-      const offsy = overlay.type == 'text' ? overlay.size * 0.3 : 0;
+      const offsy = overlay.type == 'text' ? overlay.size * 0.1 : 0;
       const padx = overlay.type == 'text' ? overlay.size * 0.5 : 0;
       const pady = overlay.type == 'text' ? overlay.size * 0.25 : 0;
       const x0 = overlay.center[0] - padx - overlay.width * overlay.scale / 2;
@@ -780,9 +790,11 @@ export default class ImageController extends EventTarget {
       if (overlay.type == 'text') {
         ctx.translate(overlay.center[0], overlay.center[1]);
         ctx.rotate(overlay.angle);
+        ctx.scale(overlay.scale, overlay.scale);
         ctx.translate(-overlay.center[0], -overlay.center[1]);
         ctx.font = `${overlay.font == 'Courier New' || overlay.font == 'Typewriter' ? 'bold' : 500} ${overlay.size}px ${overlay.font}`;
         ctx.textAlign = overlay.align;
+        ctx.textBaseline = 'middle';
         const lines = overlay.text.split('\n');
         const lineHeight = overlay.height / lines.length;
         const x = overlay.center[0] + (overlay.align == 'left' ?
@@ -813,7 +825,7 @@ export default class ImageController extends EventTarget {
               x += overlay.width - size.width;
             }
             const y = overlay.center[1] - overlay.height * 0.5 + lineHeight * (i + 0.5);
-            rects.push([x, y - lineHeight * 0.76, width, lineHeight]);
+            rects.push([x, y - lineHeight * 0.58, width, lineHeight]);
           }
           addStackedRects(ctx, rects, overlay.size * 0.5);
           ctx.fill();
@@ -1010,7 +1022,7 @@ export default class ImageController extends EventTarget {
         ctx.lineWidth = 1 * dp / viewScale;
         ctx.globalAlpha = 0.3;
         ctx.setLineDash([2 * dp / viewScale, 5 * dp / viewScale]);
-        const offsy = overlay.type == 'text' ? overlay.size * 0.3 : 0;
+        const offsy = overlay.type == 'text' ? overlay.size * 0.1 : 0;
         const padx = overlay.type == 'text' ? overlay.size * 0.5 : 0;
         const pady = overlay.type == 'text' ? overlay.size * 0.25 : 0;
         const x0 = overlay.center[0] - overlay.width * overlay.scale / 2 - padx;
