@@ -184,6 +184,14 @@ export class AppSidebarLeft extends SidebarSlider {
       return btn;
     });
     this.managers.appPeersManager.getPeerPhoto(rootScope.myId).then(async photo => {
+      if(!photo) {
+        const name = await getPeerTitle({peerId: rootScope.myId, plainText: true});
+        const acc = {name};
+        appAccountManager.update(acc);
+        accBtnById[appAccountManager.current].regularText = name;
+        console.log('[!!] upd account: ', acc);
+        return;
+      }
       const url = await apiManagerProxy.loadAvatar(rootScope.myId, photo, 'photo_small');
       const xhr = new XMLHttpRequest();
       xhr.responseType = 'arraybuffer';

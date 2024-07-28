@@ -61,10 +61,13 @@ export class AppAccountManager {
         await this.storage.connect();
         
         if (!this.inited) {
-          this.accounts = (await this.storage.getItem('accounts')) || [{
-            // default account
-            uniqId: '',
-          }];
+          this.accounts = (await this.storage.getItem('accounts')) || [];
+          if (!this.accounts.length) {
+            this.accounts.push({
+              // default account
+              uniqId: '',
+            });
+          }
           this.current = (await this.storage.getItem('current')) || '';
           this.previous = (await this.storage.getItem('previous')) || '';
           this.inited = true;
@@ -77,7 +80,13 @@ export class AppAccountManager {
     return this.initPromise;
   }
   initSync() {
-    this.accounts = JSON.parse(localStorage['tweb_accounts'] || '[{"uniqId":""}]');
+    this.accounts = JSON.parse(localStorage['tweb_accounts'] || '[]');
+    if (!this.accounts.length) {
+      this.accounts.push({
+        // default account
+        uniqId: '',
+      });
+    }
     this.current = localStorage['tweb_current'] || '';
     this.previous = localStorage['tweb_previous'] || '';
     this.inited = true;
@@ -116,6 +125,7 @@ export class AppAccountManager {
   }
 
   async addNew() {
+    console.log(`[!!] add new`);
     //await this.init();
     await toggleStorages(false, false);
 
@@ -156,6 +166,7 @@ export class AppAccountManager {
   }
 
   async update(account) {
+    console.log(`[!!] update account to `, account);
     const acc = this.accounts.find(acc => acc.uniqId == this.current);
     if (!acc) {
       return;
@@ -169,6 +180,7 @@ export class AppAccountManager {
   }
 
   async changeTo(id) {
+    console.log(`[!!] change to `, id);
     await toggleStorages(false, false);
     localStorage['tweb_current'] = id;
     localStorage['tweb_previous'] = this.current;
@@ -183,6 +195,7 @@ export class AppAccountManager {
 
   // TODO: delete old storages
   async undo(id = null) {
+    console.log(`[!!] undo to `, id);
     await toggleStorages(false, false);
 
     if (!id) {
