@@ -344,7 +344,7 @@ export default class ImageController extends EventTarget {
       const center = this.imageToClient(...textOverlay.center);
       this.textareaEl.className = `a-image-editor__textarea is-${textOverlay.align}-aligned is-${textOverlay.font}`;
       this.textareaEl.style.left = center[0] + 'px';
-      this.textareaEl.style.top = (center[1] + (window.taOffs || 0)) + 'px';
+      this.textareaEl.style.top = center[1] + 'px';
       this.textareaEl.style.transform = `translate(-50%, -50%) scale(${textOverlay.scale}) rotate(${textOverlay.angle * 180 / Math.PI}deg)`;
       this.textareaEl.style.fontFamily = textOverlay.font;
       this.textareaEl.style.fontSize = this.imageSizeToClient(textOverlay.size) + 'px';
