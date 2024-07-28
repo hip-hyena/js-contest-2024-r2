@@ -91,6 +91,13 @@ export class AppAccountManager {
       }
       this.update({ id });
     });
+    rootScope.addEventListener('logging_out', () => {
+      const other = this.accounts.filter(acc => acc.uniqId != this.current);
+      if (other.length == 0) {
+        return; // Just log out as usual
+      }
+      this.undo(other[0].uniqId);
+    });
   }
 
   async dbSuffix() {
@@ -174,6 +181,7 @@ export class AppAccountManager {
     window.location.reload(true);
   }
 
+  // TODO: delete old storages
   async undo(id = null) {
     await toggleStorages(false, false);
 
