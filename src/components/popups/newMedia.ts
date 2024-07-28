@@ -931,6 +931,7 @@ export default class PopupNewMedia extends PopupElement {
           const target = editor.controller.getImageBoundingRect();
           const animEl = img.cloneNode(true);
           animEl.style.position = 'absolute';
+          animEl.style.objectFit = 'cover';
           animEl.style.width = `${source.width}px`;
           animEl.style.height = `${source.height}px`;
           animEl.style.left = `${source.x}px`;
@@ -948,7 +949,7 @@ export default class PopupNewMedia extends PopupElement {
           }
           document.body.appendChild(animEl);
 
-          const scale = target.width / source.width;
+          const scale = Math.min(target.width / source.width, target.height / source.height);
           const dx = (target.x + target.width * 0.5) - (source.x + source.width * 0.5);
           const dy = (target.y + target.height * 0.5) - (source.y + source.height * 0.5);
           setTimeout(() => {
