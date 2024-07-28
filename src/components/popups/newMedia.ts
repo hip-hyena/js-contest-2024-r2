@@ -919,13 +919,46 @@ export default class PopupNewMedia extends PopupElement {
           params.original = params.objectURL;
         }
         const image = new Image();
-        image.onload = () => {
+        image.onload = async() => {
           const editor = new ImageEditor({
             parent: document.body,
-            image,
             managers: this.managers,
             changes: params.changes || null
           });
+
+          await editor.controller.loadImage(image);
+          const source = img.getBoundingClientRect();
+          const target = editor.controller.getImageBoundingRect();
+          const animEl = img.cloneNode(true);
+          animEl.style.position = 'absolute';
+          animEl.style.width = `${source.width}px`;
+          animEl.style.height = `${source.height}px`;
+          animEl.style.left = `${source.x}px`;
+          animEl.style.top = `${source.y}px`;
+          animEl.style.zIndex = '100000';
+          animEl.style.transition = 'transform 0.3s';
+          animEl.style.pointerEvents = 'none';
+          const onTransitionEnd = () => {
+            animEl.removeEventListener('transitionend', onTransitionEnd);
+            animEl.remove();
+            editor.controller.isOpened = true;
+            editor.controller.redraw();
+          }
+          animEl.addEventListener('transitionend', onTransitionEnd);
+          editor.animParams = {
+            el: animEl, source, target
+          }
+          document.body.appendChild(animEl);
+
+          const scale = target.width / source.width;
+          const dx = (target.x + target.width * 0.5) - (source.x + source.width * 0.5);
+          const dy = (target.y + target.height * 0.5) - (source.y + source.height * 0.5);
+          setTimeout(() => {
+            animEl.style.transform = `translate(${dx}px, ${dy}px) scale(${scale})`;
+            editor.el.style.opacity = '1';
+            editor.el.style.transform = 'scale(1)';
+          }, 0);
+          console.log(`[!!] from `, source, ' to ', target);
           editor.addEventListener('confirm', (ev: any) => {
             params.file = ev.image.blob; // new File([ev.image.blob], 'edited.jpg', {type: 'image/jpeg'});
             params.objectURL = ev.image.url;

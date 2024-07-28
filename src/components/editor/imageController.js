@@ -20,6 +20,7 @@ function distToOverlay(pt, overlay) {
 export default class ImageController extends EventTarget {
   constructor({ el, managers, callbacks, saved }) {
     super();
+    this.isOpened = false;
     this.el = el;
     this.managers = managers;
     this.callbacks = callbacks;
@@ -665,6 +666,15 @@ export default class ImageController extends EventTarget {
     const scale = this.getImageScale();
     return size * scale;
   }
+  getImageBoundingRect() {
+    const canvasRect = this.el.getBoundingClientRect();
+    const midx = canvasRect.x + canvasRect.width * 0.5;
+    const midy = canvasRect.y + canvasRect.height * 0.5;
+    const scale = this.getImageScale();
+    const width = this.imageWidth * scale;
+    const height = this.imageHeight * scale;
+    return { x: midx - width * 0.5, y: midy - height * 0.5, width, height };
+  }
 
   async loadImage(image) {
     image = await image;
@@ -679,7 +689,7 @@ export default class ImageController extends EventTarget {
   }
 
   redraw(targetCtx, cropped) {
-    if (!this.image || !this.adjuster || this.destroyed) {
+    if (!this.image || !this.adjuster || this.destroyed || !this.isOpened) {
       return;
     }
     const ctx = targetCtx || this.ctx;

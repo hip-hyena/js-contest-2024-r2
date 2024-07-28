@@ -9,9 +9,10 @@ import AngleSlider from './comps/angleSlider.js';
 import ImageController from './imageController.js';
 
 export default class ImageEditor extends EventTarget {
-  constructor({ parent, image, managers, changes }) {
+  constructor({ parent, managers, changes }) {
     super();
     this.callbacks = new CallbackManager();
+    this.animParams = null;
     this.el = makeEl('div', 'a-image-editor', { parent });
     this.mainEl = makeEl('div', 'a-image-editor__main', { parent: this.el });
     this.sideEl = makeEl('div', 'a-image-editor__side', { parent: this.el });
@@ -75,7 +76,6 @@ export default class ImageEditor extends EventTarget {
       });
     });
 
-    image && this.controller.loadImage(image);
     this.undoBtn.classList.toggle('is-disabled', !this.controller.isUndoAvailable());
     this.redoBtn.classList.toggle('is-disabled', !this.controller.isRedoAvailable());
   }
@@ -86,7 +86,23 @@ export default class ImageEditor extends EventTarget {
     for (const tab of this.tabs) {
       tab.destroy();
     }
-    this.el.remove();
+
+    if (!this.animParams) {
+      this.el.remove();
+      return;
+    }
+
+    document.body.appendChild(this.animParams.el);
+    setTimeout(() => {
+      this.el.style.opacity = '0';
+      this.animParams.el.style.transform = '';
+    }, 0);
+    const onTransitionEnd = () => {
+      this.animParams.el.removeEventListener('transitionend', onTransitionEnd);
+      this.el.remove();
+      this.animParams.el.remove();
+    }
+    this.animParams.el.addEventListener('transitionend', onTransitionEnd);
   }
 
   async confirm() {
@@ -95,6 +111,9 @@ export default class ImageEditor extends EventTarget {
     ev.changes = this.controller.saveState();
     this.dismiss();
     this.dispatchEvent(ev);
+    if (this.animParams && this.animParams.el.tagName == 'IMG') {
+      this.animParams.el.src = ev.image.url;
+    }
   }
 
   selectTab(newIndex) {
