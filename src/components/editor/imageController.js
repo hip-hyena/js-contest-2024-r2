@@ -25,13 +25,11 @@ export default class ImageController extends EventTarget {
     this.managers = managers;
     this.callbacks = callbacks;
     this.canvasEl = document.createElement('canvas');
-    this.maskCanvas = document.createElement('canvas');
     this.blurCanvas = document.createElement('canvas');
     this.textareaEl = document.createElement('textarea');
     this.textareaEl.classList.add('a-image-editor__textarea', 'is-hidden');
     this.textareaEl.cols = 1;
     this.ctx = this.canvasEl.getContext('2d');
-    this.maskCtx = this.maskCanvas.getContext('2d');
     this.blurCtx = this.blurCanvas.getContext('2d');
     this.el.append(this.canvasEl);
     this.el.append(this.textareaEl);
@@ -42,9 +40,6 @@ export default class ImageController extends EventTarget {
       this.canvasEl.width = this.viewWidth;
       this.canvasEl.height = this.viewHeight;
       this.canvasEl.style.transform = `scale(${1 / dp})`;
-      this.maskCanvas.width = this.viewWidth;
-      this.maskCanvas.height = this.viewHeight;
-      this.maskCanvas.style.transform = `scale(${1 / dp})`;
       this.blurCanvas.width = this.viewWidth;
       this.blurCanvas.height = this.viewHeight;
       this.blurCanvas.style.transform = `scale(${1 / dp})`;
@@ -688,10 +683,11 @@ export default class ImageController extends EventTarget {
     this.redraw();
   }
 
-  redraw(targetCtx, cropped) {
+  redraw(targetCtx, cropped, canvas) {
     if (!this.image || !this.adjuster || this.destroyed || !this.isOpened) {
       return;
     }
+    canvas = canvas || this.canvasEl;
     const ctx = targetCtx || this.ctx;
     const dp = window.devicePixelRatio;
     const cropWidth = this.imageWidth - (this.mode != 'crop' || cropped ? this.state.crop[0] + this.state.crop[2] : 0);
@@ -953,13 +949,13 @@ export default class ImageController extends EventTarget {
           resetContext(ctx);
           initContext(ctx);
           // Transfer currently drawn image to the blur canvas
-          ctx.filter = `blur(${overlay.size}px)`;
+          ctx.filter = `blur(${overlay.size * viewScale}px)`;
           ctx.save();
           ctx.resetTransform();
-          ctx.drawImage(this.canvasEl, 0, 0);
+          ctx.drawImage(canvas, 0, 0);
           ctx.restore();
           ctx.restore();
-          ctx.filter = `blur(${overlay.size}px)`;
+          ctx.filter = `blur(${overlay.size * viewScale}px)`;
           drawBackground(ctx);
           ctx.restore();
 
@@ -1117,8 +1113,10 @@ export default class ImageController extends EventTarget {
       const canvas = document.createElement('canvas');
       canvas.width = this.imageWidth - this.state.crop[0] - this.state.crop[2];
       canvas.height = this.imageHeight - this.state.crop[1] - this.state.crop[3];
+      this.blurCanvas.width = this.imageWidth - this.state.crop[0] - this.state.crop[2];
+      this.blurCanvas.height = this.imageHeight - this.state.crop[1] - this.state.crop[3];
       const ctx = canvas.getContext('2d');
-      this.redraw(ctx, true);
+      this.redraw(ctx, true, canvas);
       canvas.toBlob((blob) => {
         resolve({
           blob,

@@ -938,13 +938,11 @@ export default class PopupNewMedia extends PopupElement {
           animEl.style.zIndex = '100000';
           animEl.style.transition = 'transform 0.3s';
           animEl.style.pointerEvents = 'none';
-          const onTransitionEnd = () => {
-            animEl.removeEventListener('transitionend', onTransitionEnd);
+          setTimeout(() => {
             animEl.remove();
             editor.controller.isOpened = true;
             editor.controller.redraw();
-          }
-          animEl.addEventListener('transitionend', onTransitionEnd);
+          }, 300);
           editor.animParams = {
             el: animEl, source, target
           }

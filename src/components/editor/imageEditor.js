@@ -97,12 +97,10 @@ export default class ImageEditor extends EventTarget {
       this.el.style.opacity = '0';
       this.animParams.el.style.transform = '';
     }, 0);
-    const onTransitionEnd = () => {
-      this.animParams.el.removeEventListener('transitionend', onTransitionEnd);
+    setTimeout(() => {
       this.el.remove();
       this.animParams.el.remove();
-    }
-    this.animParams.el.addEventListener('transitionend', onTransitionEnd);
+    }, 300);
   }
 
   async confirm() {
