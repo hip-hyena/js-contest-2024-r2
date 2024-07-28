@@ -852,7 +852,7 @@ export default class PopupNewMedia extends PopupElement {
 
       let error: Error;
       try {
-        const promise = onMediaLoad(video);
+        const promise = onMediaLoad(video as HTMLMediaElement);
         await handleVideoLeak(video, promise);
       } catch(err) {
         error = err as any;
@@ -956,8 +956,12 @@ export default class PopupNewMedia extends PopupElement {
             editor.el.style.opacity = '1';
             editor.el.style.transform = 'scale(1)';
           }, 0);
-          console.log(`[!!] from `, source, ' to ', target);
+          // console.log(`[!!] from `, source, ' to ', target);
           editor.addEventListener('confirm', (ev: any) => {
+            const idx = this.files.indexOf(params.file);
+            if(idx > -1) {
+              this.files[idx] = ev.image.blob;
+            }
             params.file = ev.image.blob; // new File([ev.image.blob], 'edited.jpg', {type: 'image/jpeg'});
             params.objectURL = ev.image.url;
             params.scaledBlob = null;
