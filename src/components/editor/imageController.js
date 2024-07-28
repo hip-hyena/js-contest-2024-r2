@@ -136,10 +136,16 @@ export default class ImageController extends EventTarget {
     // TODO: re-crop better
     aspect = aspect == -1 ? this.imageWidth / this.imageHeight : aspect;
     if (aspect) {
+      const midx = this.state.crop[0] + (this.imageWidth - this.state.crop[0] - this.state.crop[2]) * 0.5;
+      const midy = this.state.crop[1] + (this.imageHeight - this.state.crop[1] - this.state.crop[3]) * 0.5;
+
       const w = this.imageWidth - this.state.crop[0] - this.state.crop[2];
       const h = w / aspect;
-      this.state.crop[1] = (this.imageHeight - h) / 2;
-      this.state.crop[3] = (this.imageHeight - h) / 2;
+
+      this.state.crop[1] = midy - h * 0.5;
+      this.state.crop[3] = this.imageHeight - this.state.crop[1] - h;
+      // this.state.crop[1] = (this.imageHeight - h) / 2;
+      // this.state.crop[3] = (this.imageHeight - h) / 2;
     }
 
     this.commit();
