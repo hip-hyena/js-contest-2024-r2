@@ -198,11 +198,12 @@ export class AppAccountManager {
     console.log(`[!!] undo to `, id);
     await toggleStorages(false, false);
 
-    if (!id) {
+    if (id === null) {
       id = this.previous;
     }
 
-    const accounts = this.accounts.slice(0, this.accounts.length - 1);
+    const accounts = this.accounts.filter(acc => acc.uniqId != this.current);
+    this.accounts = accounts;
     localStorage['tweb_accounts'] = JSON.stringify(accounts);
     localStorage['tweb_current'] = id;
     localStorage['tweb_previous'] = '';
