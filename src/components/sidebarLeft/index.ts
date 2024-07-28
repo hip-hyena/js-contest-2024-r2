@@ -75,6 +75,7 @@ import ReactionElement from '../chat/reaction';
 import setBlankToAnchor from '../../lib/richTextProcessor/setBlankToAnchor';
 import appAccountManager from '../../lib/appManagers/appAccountManager';
 import getPeerTitle from '../wrappers/getPeerTitle';
+import showLimitPopup from '../popups/limit';
 
 export const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
 
@@ -215,8 +216,14 @@ export class AppSidebarLeft extends SidebarSlider {
         el.style.right = '0';
         el.style.bottom = '0';
         el.style.zIndex = '100';
-        (await import('../../pages/pageSignQR')).default.mount();*/
-        await appAccountManager.addNew();
+        (await import('../../pages/pageSignQR')).default.mount(); */
+
+        const limit = rootScope.premium ? 4 : 3;
+        if(appAccountManager.accounts.length >= limit) {
+          showLimitPopup('accounts');
+        } else {
+          await appAccountManager.addNew();
+        }
       }
     }, {
       separator: true,

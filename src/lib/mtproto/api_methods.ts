@@ -28,7 +28,7 @@ export type ApiLimitType = 'pin' | 'folderPin' | 'folders' |
   'favedStickers' | 'reactions' | 'bio' | 'topicPin' | 'caption' |
   'chatlistsJoined' | 'chatlistInvites' | 'channels' | 'links' |
   'gifs' | 'folderPeers' | 'uploadFileParts' | 'recommendedChannels' |
-  'savedPin';
+  'savedPin' | 'accounts';
 
 export default abstract class ApiManagerMethods extends AppManager {
   private afterMessageIdTemp: number;
@@ -367,8 +367,12 @@ export default abstract class ApiManagerMethods extends AppManager {
   }
 
   public getLimit(type: ApiLimitType, isPremium?: boolean) {
+    if(type == 'accounts') {
+      isPremium ??= this.rootScope.premium;
+      return isPremium ? 4 : 3;
+    }
     return callbackify(this.getAppConfig(), (appConfig) => {
-      const map: {[type in ApiLimitType]: [keyof MTAppConfig, keyof MTAppConfig] | keyof MTAppConfig} = {
+      const map: {[type in ApiLimitType]: [keyof MTAppConfig | '', keyof MTAppConfig | ''] | keyof MTAppConfig} = {
         pin: ['dialogs_pinned_limit_default', 'dialogs_pinned_limit_premium'],
         folderPin: ['dialogs_folder_pinned_limit_default', 'dialogs_folder_pinned_limit_premium'],
         folders: ['dialog_filters_limit_default', 'dialog_filters_limit_premium'],
@@ -385,13 +389,15 @@ export default abstract class ApiManagerMethods extends AppManager {
         folderPeers: ['dialog_filters_chats_limit_default', 'dialog_filters_chats_limit_premium'],
         uploadFileParts: ['upload_max_fileparts_default', 'upload_max_fileparts_premium'],
         recommendedChannels: ['recommended_channels_limit_default', 'recommended_channels_limit_premium'],
-        savedPin: ['saved_dialogs_pinned_limit_default', 'saved_dialogs_pinned_limit_premium']
+        savedPin: ['saved_dialogs_pinned_limit_default', 'saved_dialogs_pinned_limit_premium'],
+        accounts: ['', '']
       };
 
       isPremium ??= this.rootScope.premium;
 
       const a = map[type];
       const key = Array.isArray(a) ? a[isPremium ? 1 : 0] : a;
+      if(key == '') return 0;
       return appConfig[key] as number;
     });
   }

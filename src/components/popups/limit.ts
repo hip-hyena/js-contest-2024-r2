@@ -13,9 +13,9 @@ import PopupPremium from './premium';
 
 const a: {[type in ApiLimitType]?: {
   title: LangPackKey,
-  description: LangPackKey,
-  descriptionPremium: LangPackKey,
-  descriptionLocked: LangPackKey,
+  description: LangPackKey | any,
+  descriptionPremium: LangPackKey | any,
+  descriptionLocked: LangPackKey | any,
   icon: Icon
 }} = {
   pin: {
@@ -52,6 +52,13 @@ const a: {[type in ApiLimitType]?: {
     descriptionPremium: 'LimitReachedPinDialogsPremium',
     descriptionLocked: 'LimitReachedPinDialogsLocked',
     icon: 'limit_pin'
+  },
+  accounts: {
+    title: 'LimitReached',
+    description: 'You have reached the limit of **%1$d** connected accounts. You can add more by subscribing to **Telegram Premium**.',
+    descriptionPremium: 'Sorry, you can\'t connect more than **%1$d** accounts.',
+    descriptionLocked: 'Sorry, you can\'t connect more than **%1$d** accounts.',
+    icon: 'user'
   }
 };
 
@@ -74,7 +81,7 @@ class P extends PopupPeer {
         callback: () => {
           PopupPremium.show({feature: options.feature});
         },
-        iconRight: 'premium_double'
+        iconRight: (options.limitPremium == options.limit + 1) ? 'premium_addone' : 'premium_double'
       }, {
         langKey: 'Cancel',
         isCancel: true
@@ -120,7 +127,7 @@ export default async function showLimitPopup(type: keyof typeof a) {
   const _a = a[type];
   const [appConfig, limit, limitPremium] = await Promise.all([
     rootScope.managers.apiManager.getAppConfig(),
-    ...[false, true].map((v) => rootScope.managers.apiManager.getLimit(type, v))
+    ...[false, true].map((v) => type == 'accounts' ? (v ? 4 : 3) : rootScope.managers.apiManager.getLimit(type, v))
   ]);
   const isLocked = appConfig.premium_purchase_blocked;
   new P({

@@ -2900,7 +2900,10 @@ const lang = {
     'other_value': 'Subscribe to [Telegram Premium]() to increase upload speeds %d times.'
   },
   'Add Account': 'Add Account',
-  'More': 'More'
+  'More': 'More',
+  'LimitReachedAccounts': 'You have reached the limit of **%1$d** connected accounts. You can add more by subscribing to **Telegram Premium**.',
+  'LimitReachedAccountsPremium': 'Sorry, you can\'t connect more than **%1$d** accounts.',
+  'LimitReachedAccountsLocked': 'Sorry, you can\'t connect more than **%1$d** accounts.'
 };
 
 export default lang;
