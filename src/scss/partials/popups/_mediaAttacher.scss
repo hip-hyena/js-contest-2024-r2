@@ -199,6 +199,9 @@
     display: flex;
     justify-content: center;
     margin: 0 auto;
+    
+    min-width: 120px;
+    min-height: 60px;
 
     img {
       object-fit: contain;
