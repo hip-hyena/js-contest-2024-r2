@@ -497,11 +497,21 @@ input[type=range].a-color-picker__hue::-ms-thumb {
   width: auto;
   min-width: 30px;
   overflow: hidden;
-  margin-top: -0.3em;
-  margin-left: -0.07em;
+  padding: 0;
+  margin-top: -0.1em;
+  margin-left: 0em;
   transform: translate(-50%, -50%);
   color: transparent;
   z-index: 1;
+}
+textarea.a-image-editor__textarea.is-Typewriter {
+  margin-top: -0.03em;
+}
+textarea.a-image-editor__textarea.is-Courier {
+  margin-top: -0.02em;
+}
+textarea.a-image-editor__textarea.is-Snell {
+  margin-top: -0.02em;
 }
 .a-image-editor__image textarea:focus {
   outline: none;
